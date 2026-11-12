@@ -21,6 +21,7 @@ type
       gpMapEditor,
       gpOptions,
       gpCredits,
+      gpAchievements,
     gpLoading,
     gpError
   );

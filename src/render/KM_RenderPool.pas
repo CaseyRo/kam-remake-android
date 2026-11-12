@@ -248,7 +248,7 @@ begin
 
   glScalef(fViewport.Zoom*CELL_SIZE_PX, fViewport.Zoom*CELL_SIZE_PX, 1 / 256);
 
-  glTranslatef(-viewportPosRound.X + gGame.ActiveInterface.ToolbarWidth/CELL_SIZE_PX/fViewport.Zoom, -viewportPosRound.Y, 0);
+  glTranslatef(-viewportPosRound.X + fViewport.ViewRect.Left/CELL_SIZE_PX/fViewport.Zoom, -viewportPosRound.Y, 0);
 
   if RENDER_3D then
   begin

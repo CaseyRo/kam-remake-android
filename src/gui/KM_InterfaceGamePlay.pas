@@ -217,8 +217,11 @@ type
     fSidebarScroll: Integer;
     fSidebarScrollMax: Integer;
     fControlsBaseTop: Integer;
+    Button_Speed: TKMButton; // Game speed for touch devices, where F5..F8 are out of reach
   private
     procedure ApplySidebarScroll;
+    procedure SpeedClick(Sender: TObject);
+    procedure MoveSidebarRight;
   protected
     {$ENDIF}
 
@@ -868,6 +871,12 @@ begin
   MinimapView.OnClickRight := Minimap_RightClick;
   MinimapView.OnMinimapClick := Minimap_Click; // For placing beacons
 
+  {$IFDEF ANDROID}
+  Button_Speed := TKMButton.Create(Panel_Main, 189, 10, 31, 36, 'x1', bsGame);
+  Button_Speed.Hint := 'Game speed';
+  Button_Speed.OnClick := SpeedClick;
+  {$ENDIF}
+
   Image_Clock := TKMImage.Create(Panel_Main,232,8,67,65,556);
   Image_Clock.Hide;
 
@@ -945,6 +954,10 @@ begin
 
   SwitchPage(nil); // Update
   Resize(aRender.ScreenX, aRender.ScreenY); // Hide/show swords according to player's resolution when game starts
+  {$IFDEF ANDROID}
+  if gGameSettings.SidebarOnRight then
+    MoveSidebarRight;
+  {$ENDIF}
   // Panel_Main.Width := aScreenX;
   // Panel_Main.Height := aScreenY;
   // UpdatePositions; //Reposition messages stack etc.
@@ -1041,6 +1054,7 @@ begin
   Sidebar_Top.Top := -fSidebarScroll;
   Sidebar_Middle.Top := Sidebar_Top.Height - fSidebarScroll;
   MinimapView.Top := 10 - fSidebarScroll;
+  Button_Speed.Top := 10 - fSidebarScroll;
   Panel_Controls.Top := fControlsBaseTop - fSidebarScroll;
   // Keep full sidebar height, the part below the screen is reached by scrolling
   Panel_Controls.Height := Max(Panel_Main.Height, SIDEBAR_REQUIRED_HEIGHT) - fControlsBaseTop;
@@ -1063,10 +1077,54 @@ begin
 end;
 
 
+// Cycles x1 -> medium -> fast -> very fast (the F5..F8 speeds from the settings) -> x1
+procedure TKMGamePlayInterface.SpeedClick(Sender: TObject);
+var
+  speed: Single;
+begin
+  speed := gGame.SpeedGIP;
+  if speed < gGameSettings.SpeedMedium then
+    speed := gGameSettings.SpeedMedium
+  else if speed < gGameSettings.SpeedFast then
+    speed := gGameSettings.SpeedFast
+  else if speed < gGameSettings.SpeedVeryFast then
+    speed := gGameSettings.SpeedVeryFast
+  else
+    speed := GAME_SPEED_NORMAL;
+  gGame.SetSpeed(speed);
+end;
+
+
+// Puts the sidebar on the right screen edge (gGameSettings.SidebarOnRight). Top-level controls that lie within
+// the toolbar width belong to the sidebar and move with it; controls placed next to the toolbar (messages, clock,
+// chat) move into the space it frees on the left. Full-screen and centred controls stay where they are
+procedure TKMGamePlayInterface.MoveSidebarRight;
+var
+  I: Integer;
+  C: TKMControl;
+begin
+  for I := 0 to Panel_Main.ChildCount - 1 do
+  begin
+    C := Panel_Main.Childs[I];
+    if (C.Left >= 0) and (C.Left + C.Width <= TOOLBAR_WIDTH) then
+    begin
+      C.Left := C.Left + Panel_Main.Width - TOOLBAR_WIDTH;
+      C.Anchors := C.Anchors - [anLeft] + [anRight];
+    end
+    else
+    if (C.Left >= TOOLBAR_WIDTH) and (C.Left + C.Width < Panel_Main.Width) then
+      C.Left := C.Left - TOOLBAR_WIDTH;
+  end;
+
+  fViewport.SidebarOnRight := True;
+  fViewport.Resize(Panel_Main.Width, Panel_Main.Height);
+end;
+
+
 function TKMGamePlayInterface.IsOverScrollableSidebar(X, Y: Integer): Boolean;
 
 begin
-  Result := (fSidebarScrollMax > 0) and (X < TOOLBAR_WIDTH)
+  Result := (fSidebarScrollMax > 0) and (X >= Sidebar_Top.AbsLeft) and (X < Sidebar_Top.AbsLeft + TOOLBAR_WIDTH)
             and not ((X >= MinimapView.AbsLeft) and (X < MinimapView.AbsLeft + MinimapView.Width)
                      and (Y >= MinimapView.AbsTop) and (Y < MinimapView.AbsTop + MinimapView.Height));
 end;
@@ -3124,6 +3182,10 @@ begin
   if (Self = nil) or (gGame = nil) then Exit;
 
   UpdateClock(gGame.SpeedActual, gGame.GetNormalSpeed, gGame.SpeedGIP);
+  {$IFDEF ANDROID}
+  Button_Speed.Caption := 'x' + FormatFloat('##0.#', gGame.SpeedGIP);
+  Button_Speed.Visible := gGame.IsSpeedUpAllowed and not gGameParams.IsReplay;
+  {$ENDIF}
   UpdateOverlayControls;
 end;
 

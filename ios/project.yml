@@ -1,0 +1,62 @@
+# xcodegen spec: `brew install xcodegen && cd ios && xcodegen` creates KaM.xcodeproj
+name: KaM
+options:
+  bundleIdPrefix: org.kamremake
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  KaM:
+    type: application
+    platform: iOS
+    sources:
+      - host
+      # Only present for the Mac build, see run_mac.sh
+      - path: build/gamedata
+        type: folder
+        buildPhase: resources
+        optional: true
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: ${KAM_BUNDLE_ID}
+      TARGETED_DEVICE_FAMILY: "1,2" # iPhone family only for iPhone Duo; small screens get the "unfold" hint
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      CODE_SIGN_STYLE: Automatic
+      DEVELOPMENT_TEAM: ${KAM_TEAM}
+      LD_RUNPATH_SEARCH_PATHS: "@executable_path/Frameworks"
+      LIBRARY_SEARCH_PATHS: "$(SRCROOT)/build/ios/deps"
+      ENABLE_BITCODE: NO
+      CLANG_ENABLE_OBJC_ARC: YES
+      GCC_PREPROCESSOR_DEFINITIONS: "GLES_SILENCE_DEPRECATION=1"
+    entitlements:
+      path: host/KaM.entitlements
+      properties:
+        com.apple.developer.game-center: true
+    info:
+      path: host/Info.plist
+      properties:
+        CFBundleDisplayName: KaM Remake
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default
+                UISceneDelegateClassName: SceneDelegate
+        UIRequiresFullScreen: true
+        UIStatusBarHidden: true
+        UIApplicationSupportsIndirectInputEvents: true
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+    dependencies:
+      - sdk: UIKit.framework
+      - sdk: OpenGLES.framework
+      - sdk: QuartzCore.framework
+      - sdk: AVFoundation.framework
+      - sdk: GameKit.framework
+      - framework: build/ios/deps/libkamcore.dylib
+        embed: true
+      - framework: build/ios/deps/libopenal.dylib
+        embed: true
+      - framework: build/ios/deps/libbass.dylib
+        embed: true

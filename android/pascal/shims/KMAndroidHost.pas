@@ -36,6 +36,8 @@ var
   gHostQuit: TKMHostQuit;
   gHostPlayVideo: TKMHostPlayVideo;
   gHostStopVideo: TKMHostStopVideo;
+  // Optional: tells the host an achievement is unlocked (iOS reports it to Game Center), see KM_Achievements
+  gHostAchievement: procedure(aId: PAnsiChar); cdecl;
 
 
 

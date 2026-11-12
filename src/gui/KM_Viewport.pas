@@ -44,6 +44,7 @@ type
     property ZoomedCellSizePX: Single read GetZoomedCellSizePx; // Cell size in pixels in current zoom
   public
     ScrollKeyLeft, ScrollKeyRight, ScrollKeyUp, ScrollKeyDown, ZoomKeyIn, ZoomKeyOut: Boolean;
+    SidebarOnRight: Boolean; // Call Resize after changing it
     constructor Create(aToolBarWidth: Integer; aWidth, aHeight: Integer; aOnPositionSet: TPointFEvent);
 
     property Position: TKMPointF read GetPosition write SetPosition;
@@ -155,9 +156,10 @@ end;
 
 procedure TKMViewport.Resize(NewWidth, NewHeight: Integer);
 begin
-  fViewRect.Left   := ToolbarWidth;
+  // The map area: right of the toolbar, or left of it when the sidebar sits on the right screen edge
+  fViewRect.Left   := IfThen(SidebarOnRight, 0, ToolbarWidth);
   fViewRect.Top    := 0;
-  fViewRect.Right  := NewWidth;
+  fViewRect.Right  := fViewRect.Left + NewWidth - ToolbarWidth;
   fViewRect.Bottom := NewHeight;
 
   fViewportClip.X := fViewRect.Right - fViewRect.Left;
@@ -261,9 +263,9 @@ end;
 function TKMViewport.GetClip: TKMRect;
 begin
   Result.Left   := Math.Max(Round(fPosition.X
-                         - (fViewportClip.X/2 - fViewRect.Left + ToolbarWidth) / ZoomedCellSizePX), 1);
+                         - (fViewportClip.X/2) / ZoomedCellSizePX), 1);
   Result.Right  := Math.Min(Round(fPosition.X
-                         + (fViewportClip.X/2 + fViewRect.Left - ToolbarWidth) / ZoomedCellSizePX) + 1, fMapX - 1);
+                         + (fViewportClip.X/2) / ZoomedCellSizePX) + 1, fMapX - 1);
   //Small render problem could be encountered at the top of clip rect
   //This small problem could be seen with reshade app (with displaydepth filter ON)
   //Enlarge clip viewport by 1 to fix it
@@ -280,8 +282,8 @@ end;
 //Same as above function but with some values changed to suit minimap
 function TKMViewport.GetMinimapClip: TKMRect;
 begin
-  Result.Left   := Max(Round(fPosition.X - (fViewportClip.X/2 - fViewRect.Left + ToolbarWidth)/ZoomedCellSizePX) + 1, 1);
-  Result.Right  := Min(Round(fPosition.X + (fViewportClip.X/2 + fViewRect.Left - ToolbarWidth)/ZoomedCellSizePX) + 1, fMapX);
+  Result.Left   := Max(Round(fPosition.X - (fViewportClip.X/2)/ZoomedCellSizePX) + 1, 1);
+  Result.Right  := Min(Round(fPosition.X + (fViewportClip.X/2)/ZoomedCellSizePX) + 1, fMapX);
   Result.Top    := Max(Round(fPosition.Y - fViewportClip.Y/2/ZoomedCellSizePX) + 1, 1);
   Result.Bottom := Min(Round(fPosition.Y + fViewportClip.Y/2/ZoomedCellSizePX) + 1, fMapY);
 end;
@@ -290,11 +292,11 @@ end;
 //Acquires a bit array that holds what camera lines to draw on the minimap
 function TKMViewport.GetMinimapClipLines: TKMDirection4Set;
 begin
-  if Round(fPosition.X - (fViewportClip.X/2 - fViewRect.Left + ToolbarWidth)/ZoomedCellSizePX) + 1 >= 1 then
+  if Round(fPosition.X - (fViewportClip.X/2)/ZoomedCellSizePX) + 1 >= 1 then
     Include(Result, drW);
   if Round(fPosition.Y + TopPad - fViewportClip.Y/2/ZoomedCellSizePX) + 1 >= 1 then
     Include(Result, drN);
-  if Round(fPosition.X + (fViewportClip.X/2 + fViewRect.Left - ToolbarWidth)/ZoomedCellSizePX) + 1 <= fMapX then
+  if Round(fPosition.X + (fViewportClip.X/2)/ZoomedCellSizePX) + 1 <= fMapX then
     Include(Result, drE);
   if Round(fPosition.Y + fViewportClip.Y/2/ZoomedCellSizePX) + 1 <= fMapY then
     Include(Result, drS);
@@ -329,7 +331,7 @@ end;
 
 function TKMViewport.MapToScreen(const aMapLoc: TKMPointF): TKMPoint;
 begin
-  Result.X := Round((aMapLoc.X - fPosition.X) * ZoomedCellSizePX + fViewRect.Right / 2 + ToolbarWidth / 2);
+  Result.X := Round((aMapLoc.X - fPosition.X) * ZoomedCellSizePX + (fViewRect.Left + fViewRect.Right) / 2);
   Result.Y := Round((aMapLoc.Y - fPosition.Y) * ZoomedCellSizePX + fViewRect.Bottom / 2);
 end;
 

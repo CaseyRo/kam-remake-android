@@ -386,7 +386,7 @@ begin
                     FormatDateTime('hh:nn:ss.zzz', dtNow),
                     TimeSince(fFirstTick) / 1000,
                     TimeSince(fPreviousTick),
-                    TThread.CurrentThread.ThreadID,
+                    {$IFDEF DARWIN}PtrInt{$ENDIF}(TThread.CurrentThread.ThreadID), // Thread id is a pointer on Darwin
                     aText]);
 
     if not FileExists(fLogPath) then

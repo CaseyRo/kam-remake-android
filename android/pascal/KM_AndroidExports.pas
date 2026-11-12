@@ -54,6 +54,10 @@ function kam_text_input_bottom: Integer; cdecl;
 function kam_text_field_tapped: Integer; cdecl;
 procedure kam_selftest(aMode: PAnsiChar); cdecl;
 
+type
+  TKMHostAchievementProc = procedure(aId: PAnsiChar); cdecl;
+procedure kam_set_achievement_callback(aCallback: TKMHostAchievementProc); cdecl;
+
 implementation
 uses
   Classes, SysUtils, Math, Types, Controls, LCLType, BaseUnix,
@@ -255,6 +259,11 @@ end;
 
 function kam_init(aDataDir: PAnsiChar; aWidth, aHeight: Integer): Integer; cdecl;
 begin
+  {$IFDEF DARWIN}
+  // Same as Set8087CW($133F) in the desktop game: no floating point traps. FPC leaves them on for this (render)
+  // thread, and system frameworks called from it (CoreAudio on macOS) then die with SIGILL
+  SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide, exOverflow, exUnderflow, exPrecision]);
+  {$ENDIF}
   {$IFDEF ANDROID_MEMDEBUG}
   InstallMemDebug;
   {$ENDIF}
@@ -976,6 +985,12 @@ function kam_text_field_tapped: Integer; cdecl;
 begin
   Result := Ord(fTextFieldTapped);
   fTextFieldTapped := False;
+end;
+
+
+procedure kam_set_achievement_callback(aCallback: TKMHostAchievementProc); cdecl;
+begin
+  gHostAchievement := aCallback;
 end;
 
 

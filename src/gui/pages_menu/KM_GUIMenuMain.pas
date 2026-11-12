@@ -21,6 +21,7 @@ type
     Button_MM_Replays: TKMButton;
     Button_MM_Options: TKMButton;
     Button_MM_Credits: TKMButton;
+    Button_MM_Achievements: TKMButton;
     Button_MM_Quit: TKMButton;
   public
     constructor Create(aParent: TKMPanel; aOnPageChange: TKMMenuChangeEventText);
@@ -61,6 +62,7 @@ begin
       Button_MM_Replays      := TKMButton.Create(Panel_MMButtons,0,120,350,30,gResTexts[TX_MENU_REPLAYS],bsMenu);
       Button_MM_Options      := TKMButton.Create(Panel_MMButtons,0,160,350,30,gResTexts[TX_MENU_OPTIONS],bsMenu);
       Button_MM_Credits      := TKMButton.Create(Panel_MMButtons,0,200,350,30,gResTexts[TX_MENU_CREDITS],bsMenu);
+      Button_MM_Achievements := TKMButton.Create(Panel_MMButtons,0,240,350,30,'Achievements',bsMenu);
       Button_MM_Quit         := TKMButton.Create(Panel_MMButtons,0,290,350,30,gResTexts[TX_MENU_QUIT],bsMenu);
       {$IFDEF NO_MULTIPLAYER_UI}
       // Build without multiplayer: hide the button and close the gap
@@ -69,7 +71,22 @@ begin
       Button_MM_Replays.Top := Button_MM_Replays.Top - 40;
       Button_MM_Options.Top := Button_MM_Options.Top - 40;
       Button_MM_Credits.Top := Button_MM_Credits.Top - 40;
+      Button_MM_Achievements.Top := Button_MM_Achievements.Top - 40;
       {$ENDIF}
+
+      {$IF DEFINED(ANDROID) AND DEFINED(DARWIN)}
+      // iOS apps are not closed from within (the home gesture does that), but the same build running on a Mac
+      // keeps the button: the host sets KAM_SHOW_QUIT there
+      Button_MM_Quit.Top := 330;
+      Button_MM_Quit.Visible := GetEnvironmentVariable('KAM_SHOW_QUIT') <> '';
+      // Three groups instead of one block: play, tools, settings
+      Button_MM_SinglePlayer.Top := 0;
+      Button_MM_Achievements.Top := 40;
+      Button_MM_MapEd.Top := 110;
+      Button_MM_Replays.Top := 150;
+      Button_MM_Options.Top := 220;
+      Button_MM_Credits.Top := 260;
+      {$IFEND}
 
       Button_MM_SinglePlayer.OnClick := ButtonClick;
       Button_MM_MultiPlayer.OnClick  := ButtonClick;
@@ -77,6 +94,7 @@ begin
       Button_MM_Replays.OnClick      := ButtonClick;
       Button_MM_Options.OnClick      := ButtonClick;
       Button_MM_Credits.OnClick      := ButtonClick;
+      Button_MM_Achievements.OnClick := ButtonClick;
       Button_MM_Quit.OnClick         := ButtonClick;
 end;
 
@@ -113,6 +131,9 @@ begin
 
   if Sender = Button_MM_Credits then
     fOnPageChange(gpCredits);
+
+  if Sender = Button_MM_Achievements then
+    fOnPageChange(gpAchievements);
 
   if Sender = Button_MM_Quit then
     gMain.Stop(Self);

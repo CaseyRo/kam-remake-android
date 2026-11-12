@@ -13,7 +13,7 @@ uses
   KM_InterfaceTypes,
   KM_GUIMenuCampaign,
   KM_GUIMenuCampaigns,
-  KM_GUIMenuCredits,
+  KM_GUIMenuCredits, KM_GUIMenuAchievements,
   KM_GUIMenuError,
   KM_GUIMenuLoad,
   KM_GUIMenuLoading,
@@ -33,6 +33,7 @@ type
     fMenuCampaign: TKMMenuCampaign;
     fMenuCampaigns: TKMMenuCampaigns;
     fMenuCredits: TKMMenuCredits;
+    fMenuAchievements: TKMMenuAchievements;
     fMenuError: TKMMenuError;
     fMenuLoad: TKMMenuLoad;
     fMenuLoading: TKMMenuLoading;
@@ -135,6 +136,7 @@ begin
   fMenuReplays       := TKMMenuReplays.Create(Panel_Menu, PageChange);
   fMenuOptions       := TKMMenuOptions.Create(Panel_Menu, PageChange, nil, UpdateHotkeys);
   fMenuCredits       := TKMMenuCredits.Create(Panel_Menu, PageChange);
+  fMenuAchievements  := TKMMenuAchievements.Create(Panel_Menu, PageChange);
   fMenuError         := TKMMenuError.Create(Panel_Menu, PageChange);
   fMenuLoading       := TKMMenuLoading.Create(Panel_Menu, PageChange);
 
@@ -191,6 +193,7 @@ begin
   fMenuCampaign.Free;
   fMenuCampaigns.Free;
   fMenuCredits.Free;
+  fMenuAchievements.Free;
   fMenuError.Free;
   fMenuLoad.Free;
   fMenuLoading.Free;
@@ -316,6 +319,10 @@ begin
     gpCredits:      begin
                       fMenuCredits.Show;
                       fMenuPage := fMenuCredits;
+                    end;
+    gpAchievements: begin
+                      fMenuAchievements.Show;
+                      fMenuPage := fMenuAchievements;
                     end;
     gpOptions:      begin
                       fMenuOptions.Show;

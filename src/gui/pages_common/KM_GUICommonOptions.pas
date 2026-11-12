@@ -93,6 +93,7 @@ type
         CheckBox_ReplayShowBeacons: TKMCheckBox;
       Panel_Mods: TKMPanel;
         CheckBox_SnowHouses: TKMCheckBox;
+        CheckBox_SidebarOnRight: TKMCheckBox;
       Panel_Sound: TKMPanel;
         Label_MusicOff: TKMLabel;
         TrackBar_SFX, TrackBar_Music: TKMTrackBar;
@@ -528,13 +529,16 @@ begin
 
   // Mods
 //  Panel_Options_Mods := TKMPanel.Create(Panel_Options,300,bottomLine-20,280,50);
-  Panel_Mods := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 50);
+  Panel_Mods := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 70);
   Panel_Mods.Anchors := [anLeft];
     TKMLabel.Create(Panel_Mods,6,0,270,20,gResTexts[TX_MENU_OPTIONS_MODS] + ':',fntOutline,taLeft);
-    TKMBevel.Create(Panel_Mods,0,20,280,30);
+    TKMBevel.Create(Panel_Mods,0,20,280,50);
 
     CheckBox_SnowHouses := TKMCheckBox.Create(Panel_Mods,10,27,256,20,gResTexts[TX_MENU_OPTIONS_MODS_SNOW_HOUSES], fntMetal);
     CheckBox_SnowHouses.OnClick := Change;
+    // shortcut: English only and applied when the next game starts or loads, see TKMGamePlayInterface.MoveSidebarRight
+    CheckBox_SidebarOnRight := TKMCheckBox.Create(Panel_Mods,10,47,256,20,'Sidebar on the right', fntMetal);
+    CheckBox_SidebarOnRight.OnClick := Change;
 end;
 
 
@@ -591,6 +595,7 @@ begin
   CheckBox_ShuffleOn.Checked    := gGameSettings.SFX.ShuffleOn;
   CheckBox_ShuffleOn.Enabled    := not CheckBox_MusicOff.Checked;
   CheckBox_SnowHouses.Checked   := gGameSettings.GFX.AllowSnowHouses;
+  CheckBox_SidebarOnRight.Checked := gGameSettings.SidebarOnRight;
 
   CheckBox_VideoEnable.Checked   := gGameSettings.Video.Enabled;
   CheckBox_VideoStretch.Checked  := gGameSettings.Video.VideoStretch;
@@ -668,6 +673,7 @@ begin
   gGameSettings.SFX.MusicEnabled       := not CheckBox_MusicOff.Checked;
   gGameSettings.SFX.ShuffleOn          := CheckBox_ShuffleOn.Checked;
   gGameSettings.GFX.AllowSnowHouses    := CheckBox_SnowHouses.Checked;
+  gGameSettings.SidebarOnRight         := CheckBox_SidebarOnRight.Checked;
 
   TrackBar_Music.Enabled      := not CheckBox_MusicOff.Checked;
   CheckBox_ShuffleOn.Enabled  := not CheckBox_MusicOff.Checked;

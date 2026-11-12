@@ -386,7 +386,8 @@ exports
   kam_in_game,
   kam_text_input_bottom,
   kam_text_field_tapped,
-  kam_selftest;
+  kam_selftest,
+  kam_set_achievement_callback;
 
 begin
 end.
