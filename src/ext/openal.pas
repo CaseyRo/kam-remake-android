@@ -72,7 +72,7 @@ const
   calutlibname='Alut.dll';
 {$ENDIF}
 {$IFDEF DARWIN}
-  callibname='@rpath/libopenal.dylib'; // iOS port: OpenAL Soft in the app bundle
+  callibname='@rpath/openal.framework/openal'; // iOS port: OpenAL Soft in the app bundle (ios/make_frameworks.sh)
   calutlibname='libalut.dylib';
 {$ELSE}
 {$IF DEFINED(Linux) OR DEFINED(ANDROID)}

@@ -5,11 +5,13 @@
 #import <AVFoundation/AVFoundation.h>
 #import <GameKit/GameKit.h>
 #import <GameController/GameController.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <QuartzCore/QuartzCore.h>
 #import <OpenGLES/EAGL.h>
 #import <OpenGLES/ES2/gl.h>
 #import <OpenGLES/ES2/glext.h>
 #include <pthread.h>
+#include <objc/message.h>
 
 // ---------- Engine C API (android/pascal/KM_AndroidExports.pas) ----------
 typedef struct {
@@ -37,11 +39,14 @@ extern int kam_text_input_active(void);
 extern void kam_video_finished(void);
 extern void kam_selftest(const char *mode);
 extern void kam_set_achievement_callback(void (*callback)(const char *identifier));
+extern void kam_set_display_callback(void (*callback)(int fullScreen, int height));
 
 enum { TOUCH_DOWN = 0, TOUCH_MOVE = 1, TOUCH_UP = 2, TOUCH_CANCEL = 3, TOUCH_POINTER_DOWN = 5, TOUCH_POINTER_UP = 6 };
 enum { VK_BACK = 8, VK_RETURN = 13, VK_SPACE = 32 };
 // Game resolution the original UI is designed for (same as the Android port)
 static const float BASE_WIDTH = 1024, BASE_HEIGHT = 720;
+// Game pixels in the height of the view. Fixed on touch devices; on a Mac the Options page changes it (cb_set_display)
+static float gGameHeight = BASE_HEIGHT;
 // Deep recursion in the engine (terrain flood fill on big maps) needs far more than the default thread stack
 static const size_t RENDER_THREAD_STACK = 128u << 20;
 
@@ -56,6 +61,7 @@ static void video_finish(void);
 - (void)startWithDataDir:(NSString *)dataDir;
 - (void)setPaused:(BOOL)paused;
 - (void)post:(dispatch_block_t)event;
+- (void)relayout;
 - (void)handlePresses:(NSSet<UIPress *> *)presses down:(BOOL)down;
 @end
 
@@ -102,9 +108,17 @@ static void video_finish(void);
   if (s.width <= 0 || CGSizeEqualToSize(s, _layoutSize)) return;
   _layoutSize = s;
   // The layer buffer gets the game resolution and is stretched to the screen, so the original UI stays readable
-  float scale = MAX(MIN(s.height / BASE_HEIGHT, s.width / BASE_WIDTH), 0.25f);
+  // Never more game pixels than the display has
+  float gameHeight = MAX(BASE_HEIGHT, MIN(gGameHeight, s.height * (self.window.screen.scale ?: 1)));
+  float scale = MAX(MIN(s.height / gameHeight, s.width / (gameHeight * BASE_WIDTH / BASE_HEIGHT)), 0.25f);
   self.layer.contentsScale = 1 / scale;
   _resized = YES;
+}
+
+// The game resolution changed: lay out again although the view kept its size
+- (void)relayout {
+  _layoutSize = CGSizeZero;
+  [self setNeedsLayout];
 }
 
 // Render thread. (Re)creates the framebuffer for the current layer size
@@ -522,12 +536,59 @@ static void cb_achievement(const char *identifier) {
   });
 }
 
-// ---------- App ----------
-@interface KaMViewController : UIViewController
-@end
-
 // Points. Below this the original UI would be too small to read or tap (iPad mini is 1133 x 744)
 static const CGFloat MIN_PLAY_WIDTH = 640, MIN_PLAY_HEIGHT = 450;
+
+// ---------- Display on a Mac: window mode and game resolution, set on the game's Options page ----------
+// shortcut: an iPad app on a Mac has no public window API, so this reaches its NSWindow by name; replace with a
+// UIWindowScene call if Apple adds one for "Designed for iPad" apps
+static id mac_window(void) {
+  id app = ((id (*)(id, SEL))objc_msgSend)(NSClassFromString(@"NSApplication"), NSSelectorFromString(@"sharedApplication"));
+  return [[app valueForKey:@"windows"] firstObject];
+}
+
+static void mac_set_full_screen(BOOL fullScreen) {
+  id window = mac_window();
+  BOOL isFullScreen = ([[window valueForKey:@"styleMask"] unsignedIntegerValue] & (1 << 14)) != 0; // NSWindowStyleMaskFullScreen
+  if (window && isFullScreen != fullScreen)
+    ((void (*)(id, SEL, id))objc_msgSend)(window, NSSelectorFromString(@"toggleFullScreen:"), nil);
+}
+
+// Windowed: the window takes the chosen resolution, one game pixel per point, keeping its shape (capped to the
+// screen). Full screen: the chosen resolution is stretched over the display
+static void cb_set_display(int fullScreen, int height) {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [NSUserDefaults.standardUserDefaults setBool:fullScreen forKey:@"fullScreen"];
+    [NSUserDefaults.standardUserDefaults setInteger:height forKey:@"gameHeight"];
+    gGameHeight = height;
+    mac_set_full_screen(fullScreen);
+    id window = mac_window();
+    if (!fullScreen && window) {
+      // The system sizes this window from its scene and ignores NSWindow resizing. The request below is the Mac
+      // Catalyst geometry API: not declared for iPad apps, but present at run time when one runs on a Mac.
+      // Window frames are in Mac points, the view in iPad points (a Mac shows iPad apps scaled down): k converts
+      CGSize view = gView.bounds.size, screen = [[[window valueForKey:@"screen"] valueForKey:@"visibleFrame"] CGRectValue].size;
+      CGRect frame = [[window valueForKey:@"frame"] CGRectValue];
+      CGFloat k = frame.size.width / gView.superview.bounds.size.width, chrome = frame.size.height - gView.superview.bounds.size.height * k; // title bar
+      CGFloat h = MIN(height * k, screen.height - chrome), w = MIN(h * view.width / view.height, screen.width);
+      frame = CGRectMake(frame.origin.x + (frame.size.width - w) / 2, frame.origin.y + (frame.size.height - h - chrome) / 2, w, h + chrome);
+      id prefs = [NSClassFromString(@"UIWindowSceneGeometryPreferencesMac") new];
+      [prefs setValue:[NSValue valueWithCGRect:frame] forKey:@"systemFrame"];
+      if (prefs)
+        [gView.window.windowScene requestGeometryUpdateWithPreferences:prefs errorHandler:^(NSError *e) {
+          NSLog(@"KaMHost: window resize refused: %@", e);
+        }];
+      else NSLog(@"KaMHost: no window geometry API, window keeps its size");
+    }
+    NSLog(@"KaMHost: display fullScreen=%d height=%d", fullScreen, height);
+    [gView relayout];
+  });
+}
+
+// ---------- App ----------
+@interface KaMViewController : UIViewController <UIDocumentPickerDelegate>
+@end
+
 static BOOL gTooSmall, gInactive = YES;
 
 // The game (and a playing video) runs only while the scene is active and large enough
@@ -540,6 +601,7 @@ static void update_pause(void) {
 
 @implementation KaMViewController {
   UILabel *_hint;
+  NSString *_docs; // the game's data and save folder
 }
 - (void)loadView {
   self.view = [UIView new];
@@ -569,6 +631,7 @@ static void update_pause(void) {
   update_pause();
 }
 - (BOOL)prefersStatusBarHidden { return YES; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskLandscape; }
 - (BOOL)prefersHomeIndicatorAutoHidden { return YES; }
 - (UIRectEdge)preferredScreenEdgesDeferringSystemGestures { return UIRectEdgeAll; }
 
@@ -602,23 +665,83 @@ static void update_pause(void) {
   if (started) return;
   started = YES;
   // Game data lives in Documents (writable: saves, settings and logs go next to it). See ios/push_data.sh
-  NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-  // The Mac build carries the game data in the app bundle (ios/run_mac.sh): macOS lets nothing else write into the
-  // app's container. First start copies it out, because the engine saves next to its data
+  _docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+  // Test aid: KAM_DATA_DIR=name keeps the game in Documents/<name>, e.g. to try the import with an empty folder
+  if (getenv("KAM_DATA_DIR")) _docs = [_docs stringByAppendingPathComponent:@(getenv("KAM_DATA_DIR"))];
+  [NSFileManager.defaultManager createDirectoryAtPath:_docs withIntermediateDirectories:YES attributes:nil error:nil];
+  // The Mac development build carries the game data in the app bundle (ios/run_mac.sh); first start copies it out
+  [self importFrom:[NSBundle.mainBundle.resourcePath stringByAppendingPathComponent:@"gamedata"]];
+  [self startGame];
+}
+
+static NSArray<NSString *> *data_folders(void) {
+  return @[@"data", @"Campaigns", @"Maps", @"MapsMP", @"Music", @"Sounds", @"Tutorials"];
+}
+
+- (BOOL)hasData { return [NSFileManager.defaultManager fileExistsAtPath:[_docs stringByAppendingPathComponent:@"data"]]; }
+
+// Copies the game's data folders from a KaM Remake installation into Documents (names matched without regard to
+// case). Returns nil, or what went wrong
+- (NSString *)importFrom:(NSString *)source {
   NSFileManager *fm = NSFileManager.defaultManager;
-  NSString *bundled = [NSBundle.mainBundle.resourcePath stringByAppendingPathComponent:@"gamedata"];
-  if (![fm fileExistsAtPath:[docs stringByAppendingPathComponent:@"data"]])
-    for (NSString *name in [fm contentsOfDirectoryAtPath:bundled error:nil] ?: @[]) {
+  NSArray<NSString *> *found = [fm contentsOfDirectoryAtPath:source error:nil] ?: @[];
+  if ([self hasData] || found.count == 0) return nil;
+  BOOL any = NO;
+  for (NSString *name in data_folders())
+    for (NSString *entry in found) {
+      if ([entry caseInsensitiveCompare:name] != NSOrderedSame) continue;
+      NSString *to = [_docs stringByAppendingPathComponent:name];
       NSError *e;
-      if (![fm copyItemAtPath:[bundled stringByAppendingPathComponent:name] toPath:[docs stringByAppendingPathComponent:name] error:&e])
-        NSLog(@"KaMHost: copying %@ failed: %@", name, e);
+      [fm removeItemAtPath:to error:nil]; // left over from an interrupted import
+      if (![fm copyItemAtPath:[source stringByAppendingPathComponent:entry] toPath:to error:&e]) return e.localizedDescription;
+      any = YES;
     }
-  if (![NSFileManager.defaultManager fileExistsAtPath:[docs stringByAppendingPathComponent:@"data"]]) {
-    cb_show_message("KaM Remake", "Game data not found. Copy the folders data, Campaigns, Maps, MapsMP, Music, Sounds and Tutorials "
-                                  "into this app's Documents folder (ios/push_data.sh or Finder), then start the app again.");
+  return any && [self hasData] ? nil : @"That folder has no \"data\" folder in it. Choose the folder of a KaM Remake installation.";
+}
+
+- (void)startGame {
+  if ([self hasData]) {
+    [gView startWithDataDir:_docs];
+    // Restoring full screen has to wait until the window has finished opening: switching during launch makes
+    // macOS abort the app ("Unbalanced state change freezing/thawing")
+    if (NSProcessInfo.processInfo.isiOSAppOnMac && [NSUserDefaults.standardUserDefaults boolForKey:@"fullScreen"])
+      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ mac_set_full_screen(YES); });
     return;
   }
-  [gView startWithDataDir:docs];
+  UIAlertController *a = [UIAlertController alertControllerWithTitle:@"Game data needed"
+      message:@"This app is the game engine only. Choose the folder of a KaM Remake installation: the one that contains "
+              @"data, Campaigns, Maps, MapsMP, Music, Sounds and Tutorials. It is copied into the app once."
+      preferredStyle:UIAlertControllerStyleAlert];
+  [a addAction:[UIAlertAction actionWithTitle:@"Choose game folder…" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeFolder]];
+    picker.delegate = self;
+    [self presentViewController:picker animated:YES completion:nil];
+  }]];
+  [self presentViewController:a animated:YES completion:nil];
+}
+
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller { [self startGame]; }
+
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+  NSURL *url = urls.firstObject;
+  UIAlertController *busy = [UIAlertController alertControllerWithTitle:@"Copying game data…" message:@"About 1 GB, this takes a moment."
+                                                         preferredStyle:UIAlertControllerStyleAlert];
+  [self presentViewController:busy animated:YES completion:nil];
+  dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+    BOOL scoped = [url startAccessingSecurityScopedResource]; // the picked folder lies outside the app's sandbox
+    NSString *problem = [self importFrom:url.path];
+    if (scoped) [url stopAccessingSecurityScopedResource];
+    NSLog(@"KaMHost: import from %@: %@", url.lastPathComponent, problem ?: @"done");
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [busy dismissViewControllerAnimated:YES completion:^{
+        if (!problem) { [self startGame]; return; }
+        UIAlertController *failed = [UIAlertController alertControllerWithTitle:@"Could not use that folder" message:problem
+                                                                 preferredStyle:UIAlertControllerStyleAlert];
+        [failed addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) { [self startGame]; }]];
+        [self presentViewController:failed animated:YES completion:nil];
+      }];
+    });
+  });
 }
 @end
 
@@ -647,6 +770,10 @@ static void update_pause(void) {
   static kam_host_callbacks cb = {cb_show_message, cb_clipboard_set, cb_clipboard_get, cb_open_url, cb_quit, cb_play_video, cb_stop_video};
   kam_set_callbacks(&cb);
   kam_set_achievement_callback(cb_achievement);
+  if (NSProcessInfo.processInfo.isiOSAppOnMac) {
+    kam_set_display_callback(cb_set_display);
+    gGameHeight = [NSUserDefaults.standardUserDefaults integerForKey:@"gameHeight"] ?: BASE_HEIGHT;
+  }
   application.idleTimerDisabled = YES;
   return YES;
 }

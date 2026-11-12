@@ -57,6 +57,9 @@ procedure kam_selftest(aMode: PAnsiChar); cdecl;
 type
   TKMHostAchievementProc = procedure(aId: PAnsiChar); cdecl;
 procedure kam_set_achievement_callback(aCallback: TKMHostAchievementProc); cdecl;
+type
+  TKMHostDisplayProc = procedure(aFullScreen, aHeight: Integer); cdecl;
+procedure kam_set_display_callback(aCallback: TKMHostDisplayProc); cdecl;
 
 implementation
 uses
@@ -991,6 +994,12 @@ end;
 procedure kam_set_achievement_callback(aCallback: TKMHostAchievementProc); cdecl;
 begin
   gHostAchievement := aCallback;
+end;
+
+
+procedure kam_set_display_callback(aCallback: TKMHostDisplayProc); cdecl;
+begin
+  gHostSetDisplay := aCallback;
 end;
 
 

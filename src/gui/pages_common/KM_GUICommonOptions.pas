@@ -129,10 +129,13 @@ uses
   KM_Main, KM_Music, KM_Sound, KM_RenderUI, KM_Resource, KM_ResTexts, KM_ResLocales, KM_ResFonts, KM_ResSound, KM_Video,
   KM_ResTypes,
   KM_Game, KM_GameSettings, KM_GameParams, KM_GameTypes,
+  {$IFDEF ANDROID} KMAndroidHost, {$ENDIF}
   KM_GameAppSettings;
 
 const
   SCROLL_SPEED_MULTIPLIER = 2.5;
+  // Game resolutions a host with a window offers (heights; see gHostSetDisplay). Higher = more map, smaller UI
+  HOST_HEIGHTS: array [0..4] of Integer = (720, 900, 1080, 1440, 2160);
   BLOCK_SPAN = 18;
 
 
@@ -279,6 +282,21 @@ begin
 
     Button_ResApply := TKMButton.Create(Panel_Res, 10, 125, 260, 30, gResTexts[TX_MENU_OPTIONS_APPLY], bsMenu);
     Button_ResApply.OnClick := ApplyResolution;
+
+  {$IF DEFINED(ANDROID) AND DEFINED(DARWIN)}
+  // A touch device has one screen-filling size: no panel. A Mac host (gHostSetDisplay) gets the window mode and
+  // the game resolution; refresh rates do not apply
+  if not Assigned(gHostSetDisplay) then
+  begin
+    Panel_Res.Hide;
+    aTopBlock := Panel_Res.Top;
+  end
+  else
+  begin
+    DropBox_RefreshRate.Hide;
+    Button_ResApply.Top := 90;
+  end;
+  {$IFEND}
 end;
 
 
@@ -775,6 +793,13 @@ var
   I: Integer;
   resID, refID: Integer;
 begin
+  {$IF DEFINED(ANDROID) AND DEFINED(DARWIN)}
+  if Assigned(gHostSetDisplay) then
+  begin
+    Button_ResApply.Enable;
+    Exit;
+  end;
+  {$IFEND}
   if fResolutions.Count = 0 then Exit;
 
   DropBox_Resolution.Enabled := CheckBox_FullScreen.Checked;
@@ -813,6 +838,15 @@ var
   ResID, RefID: Integer;
   NewResolution: TKMScreenRes;
 begin
+  {$IF DEFINED(ANDROID) AND DEFINED(DARWIN)}
+  if Assigned(gHostSetDisplay) then
+  begin
+    gMainSettings.FullScreen := CheckBox_FullScreen.Checked;
+    gHostSetDisplay(Ord(CheckBox_FullScreen.Checked), HOST_HEIGHTS[DropBox_Resolution.ItemIndex]);
+    Button_ResApply.Disable;
+    Exit;
+  end;
+  {$IFEND}
   if fResolutions.Count = 0 then Exit;
 
   gMainSettings.FullScreen := CheckBox_FullScreen.Checked;
@@ -859,6 +893,25 @@ var
   resIndex: TKMScreenResIndex;
   selectedResolutionIndex: Integer;
 begin
+  {$IF DEFINED(ANDROID) AND DEFINED(DARWIN)}
+  if Assigned(gHostSetDisplay) then
+  begin
+    // Shown for the current window shape; the entry nearest to the size in use is selected
+    // shortcut: the check box follows the last Apply, not a full screen switch made with the window's own button
+    DropBox_Resolution.Clear;
+    selectedResolutionIndex := 0;
+    for I := Low(HOST_HEIGHTS) to High(HOST_HEIGHTS) do
+    begin
+      DropBox_Resolution.Add(Format('%dx%d', [Round(HOST_HEIGHTS[I] * gHostScreenWidth / gHostScreenHeight), HOST_HEIGHTS[I]]));
+      if Abs(HOST_HEIGHTS[I] - gHostScreenHeight) < Abs(HOST_HEIGHTS[selectedResolutionIndex] - gHostScreenHeight) then
+        selectedResolutionIndex := I;
+    end;
+    DropBox_Resolution.ItemIndex := selectedResolutionIndex;
+    CheckBox_FullScreen.Checked := gMainSettings.FullScreen;
+    Button_ResApply.Disable;
+    Exit;
+  end;
+  {$IFEND}
   DropBox_Resolution.Clear;
   DropBox_RefreshRate.Clear;
 

@@ -38,6 +38,9 @@ var
   gHostStopVideo: TKMHostStopVideo;
   // Optional: tells the host an achievement is unlocked (iOS reports it to Game Center), see KM_Achievements
   gHostAchievement: procedure(aId: PAnsiChar); cdecl;
+  // Optional: a host with a resizable window (Mac). Applies the window mode and the game resolution, given as the
+  // number of game pixels in the height of the view; the width follows the window's shape
+  gHostSetDisplay: procedure(aFullScreen, aHeight: Integer); cdecl;
 
 
 

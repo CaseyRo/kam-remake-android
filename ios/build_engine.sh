@@ -77,3 +77,4 @@ FU+=(-Fu"$BUILD/lazutils" -Fu"$UNIVINT")
   ${KAM_FPC_FLAGS:-} "$@" "$REPO/android/pascal/kamcore.lpr"
 # The Xcode project (and the Mac smoke test) pick up every library from one folder
 [ ! -f "$OUT/libkamcore.dylib" ] || cp -f "$OUT/libkamcore.dylib" "$BUILD/deps/"
+[ "$TARGET" != ios ] || "$IOS_DIR/make_frameworks.sh"
