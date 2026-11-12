@@ -54,6 +54,7 @@ targets:
       - sdk: QuartzCore.framework
       - sdk: AVFoundation.framework
       - sdk: GameKit.framework
+      - sdk: GameController.framework
       - framework: build/ios/deps/libkamcore.dylib
         embed: true
       - framework: build/ios/deps/libopenal.dylib

@@ -4,6 +4,7 @@
 #import <UIKit/UIKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <GameKit/GameKit.h>
+#import <GameController/GameController.h>
 #import <QuartzCore/QuartzCore.h>
 #import <OpenGLES/EAGL.h>
 #import <OpenGLES/ES2/gl.h>
@@ -71,7 +72,7 @@ static void video_finish(void);
   int _frame;
   int _mouseButton;                          // button of the pointer press in progress
   CGFloat _scrollAcc;
-  BOOL _spaceHeld, _spacePanning;            // Space + pointer movement pans the map
+  BOOL _spacePanning, _spaceUsedForPan;      // Space + pointer movement pans the map
 }
 
 + (Class)layerClass { return [CAEAGLLayer class]; }
@@ -278,14 +279,25 @@ static void *render_thread(void *arg) {
   [self post:^{ kam_mouse(action, button, x, y); }];
 }
 
+// The physical state of the Space key. Key events cannot tell: while a key is held, a Mac delivers its auto-repeat
+// as a stream of press/release pairs
+static BOOL space_is_down(void) {
+  return [GCKeyboard.coalescedKeyboard.keyboardInput buttonForKeyCode:GCKeyCodeSpacebar].isPressed;
+}
+
 - (void)hover:(UIHoverGestureRecognizer *)g {
   if (g.state != UIGestureRecognizerStateBegan && g.state != UIGestureRecognizerStateChanged) return;
   CGPoint p = [g locationInView:self];
-  if (!_spaceHeld) { [self sendMouse:TOUCH_MOVE button:0 at:p]; return; }
+  if (!space_is_down()) {
+    if (_spacePanning) { _spacePanning = NO; [self post:^{ kam_touch(TOUCH_CANCEL, 1, 0, 0, 0, 0); }]; } // cancel: no click at the end
+    [self sendMouse:TOUCH_MOVE button:0 at:p];
+    return;
+  }
   // Space held: the pointer drags the map like a finger does (the engine pans on a one-finger drag)
   float x = p.x * _bufW / self.bounds.size.width, y = p.y * _bufH / self.bounds.size.height;
   int action = _spacePanning ? TOUCH_MOVE : TOUCH_DOWN;
-  _spacePanning = YES;
+  if (getenv("KAM_LOG_INPUT") && !_spacePanning) NSLog(@"KaMHost: pan starts at %.0f,%.0f", x, y);
+  _spacePanning = _spaceUsedForPan = YES;
   [self post:^{ kam_touch(action, 1, x, y, x, y); }];
 }
 
@@ -356,13 +368,12 @@ static int vk_from_hid(long u) {
     int vk = p.key ? vk_from_hid(p.key.keyCode) : 0;
     // While a text field has focus, Return and Backspace arrive through insertText/deleteBackward
     if (!vk || (self.isFirstResponder && (vk == VK_RETURN || vk == VK_BACK))) continue;
-    // Space is the pan modifier outside text fields. A press without pointer movement keeps its game function
+    // Space is the pan modifier outside text fields (see hover:). The game gets Space only as a single tap, once
+    // the key is really up and it was not used for panning; auto-repeat pairs are dropped
     if (vk == VK_SPACE && !self.isFirstResponder) {
-      if (down) { _spaceHeld = YES; _spacePanning = NO; }
-      else if (_spaceHeld) {
-        if (_spacePanning) [self post:^{ kam_touch(TOUCH_CANCEL, 1, 0, 0, 0, 0); }]; // cancel: the drag must not end as a click
-        else [self sendKey:VK_SPACE];
-        _spaceHeld = _spacePanning = NO;
+      if (!down && !space_is_down()) {
+        if (!_spaceUsedForPan) [self sendKey:VK_SPACE];
+        _spaceUsedForPan = NO;
       }
       continue;
     }
