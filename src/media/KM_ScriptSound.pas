@@ -344,7 +344,8 @@ begin
   {$IFNDEF FPC}
   TArray.Sort<Integer>(keyArray);
   {$ELSE}
-  SortCustom(keyArray, Low(keyArray), High(keyArray), SizeOf(keyArray[0]), CompareKeys);
+  if Length(keyArray) > 1 then // untyped var param: pass the first element, not the array variable
+    SortCustom(keyArray[0], Low(keyArray), High(keyArray), SizeOf(keyArray[0]), CompareKeys);
   {$ENDIF}
   for key in keyArray do
   begin
