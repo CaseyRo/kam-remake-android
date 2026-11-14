@@ -3,7 +3,7 @@
 A visual mod for KaM Remake: warm linen, oak and moss menus and in-game interface, in place of the dark stone look.
 It replaces GUI sprites and fonts and sets the engine's UI colours (`theme.ini`). Game rules are unchanged, and
 without the mod installed the game looks as before. Design source: the Paper file "KaM Friendly
-Mod", page "10 Final - Friendly Mod"; the full spec is `kam-friendly-mod-spec.md`.
+Mod", page "10 Final - Friendly Mod"; the original spec is `docs/design-spec.md` (this README is current where they differ).
 
 ## What it changes
 

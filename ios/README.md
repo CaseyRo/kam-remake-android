@@ -21,7 +21,17 @@ Needs Xcode, `brew install fpc xcodegen cmake ninja ffmpeg`, and the Lazarus sou
 | Engine | `ios/build_engine.sh` | about 90 seconds |
 | iPad | `ios/run_ipad.sh [seconds]` | builds, installs, runs with the console in `ios/run-ipad.log` |
 | Game data to the iPad | `ios/push_data.sh` | once per install |
-| Mac | `ios/run_mac.sh` | bundles the data into the app |
+| Mac | `ios/run_mac.sh` | bundles the data into the app; `KAM_MOD=../mods/friendly ios/run_mac.sh` also bundles that mod (kept in sync on every start; a plain build removes it) |
+| TestFlight | `ios/testflight.sh <build number>` | archives and uploads; see below if the upload fails |
+
+PascalScript on ARM64: the `src/ext/pascalscript_submodule` checkout carries local changes (native aarch64 caller
+and script method thunk). They are saved in `ios/patches/pascalscript-aarch64.patch`; on a fresh checkout apply it
+inside the submodule with `git apply ../../../ios/patches/pascalscript-aarch64.patch`.
+
+TestFlight upload: if `testflight.sh` archives fine but the upload stops with `exportArchive Failed to Use Accounts`
+("App Store Connect access ... is required"), open the archive in Xcode (`open -a Xcode ios/build/KaM.xcarchive`)
+and upload it from the Organizer (Distribute App > TestFlight & App Store). That worked for build 6 while the
+command-line upload kept failing.
 
 Videos: the game's `.avi` clips are played from `.mp4` files of the same name next to them (convert with ffmpeg).
 
@@ -38,7 +48,8 @@ App icon: put a 1024 x 1024 `icon-1024.png` into `ios/host/Assets.xcassets/AppIc
 - Game speed button next to the minimap, optional sidebar on the right (Options > Mods).
 - Achievements (`src/game/KM_Achievements.pas`), reported to Game Center when the app is signed for it.
   The identifiers and icons are in `ios/gamecenter/`.
-- Hardware keyboard and mouse; hold Space and move the pointer to pan the map.
+- Hardware keyboard and mouse; hold Space and move the pointer to pan the map. Right button: a secondary click
+  (two-finger click on a trackpad), or Control/Option-click for a mouse or trackpad without one.
 - The view keeps a landscape shape of at most 4:3; windows too small to play in show a hint instead.
   It stays inside the safe area on the left, top and right (Android: clear of a camera cutout).
 
