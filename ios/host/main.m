@@ -645,7 +645,8 @@ static void update_pause(void) {
 }
 
 static NSArray<NSString *> *data_folders(void) {
-  return @[@"data", @"Campaigns", @"Maps", @"MapsMP", @"Music", @"Sounds", @"Tutorials"];
+  // "Modding graphics": optional sprite overrides (mods/friendly); copied only when the chosen folder has it
+  return @[@"data", @"Campaigns", @"Maps", @"MapsMP", @"Music", @"Sounds", @"Tutorials", @"Modding graphics"];
 }
 
 - (BOOL)hasData { return [NSFileManager.defaultManager fileExistsAtPath:[_docs stringByAppendingPathComponent:@"data"]]; }
