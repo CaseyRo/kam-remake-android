@@ -91,7 +91,7 @@
     {
       "archive": "GUIMain.rxx",
       "id": 6,
-      "newArt": "Crest becomes a hanging banner: oak with a wheat sheaf",
+      "newArt": "Crest becomes a hanging banner: oak with a wheat sheaf. Also drawn by KM_GUICommonOptions behind the Options language list (same stretched 269x383 rect at 705,220), so art cannot move clear of it inside the sprite",
       "specSize": null,
       "exists": true,
       "width": 209,
@@ -108,7 +108,7 @@
     {
       "archive": "GUIMain.rxx",
       "id": 9,
-      "newArt": "bsMenu tile. Flat moss #5D7E38, no baked light or lip (sampled in screen space at 2 screen px per texel)",
+      "newArt": "bsMenu tile. Flat moss #526F31 (cream text 5.6:1), no baked light or lip (sampled in screen space at 2 screen px per texel)",
       "specSize": null,
       "exists": true,
       "width": 300,
@@ -177,7 +177,7 @@
     {
       "archive": "GUI.rxx",
       "id": 404,
-      "newArt": "Sidebar planks, 224x400 tile, honey oak with walnut seams",
+      "newArt": "Sidebar planks, 224x400 tile, honey oak: plain boards with soft 2 px seams, no butt joints or grain (the build/stats/house grids are translucent and sit on this tile; tools/calm_planks.py)",
       "specSize": [
         224,
         400
@@ -198,7 +198,7 @@
     {
       "archive": "GUI.rxx",
       "id": 407,
-      "newArt": "Sidebar top 224x200: linen minimap frame, radius 12, walnut ring, plus the vine edge",
+      "newArt": "Sidebar top 224x200: linen minimap frame, radius 12, walnut ring, plus the vine edge; plank seams match 404 (tools/calm_planks.py)",
       "specSize": [
         224,
         200
@@ -219,7 +219,7 @@
     {
       "archive": "GUI.rxx",
       "id": 554,
-      "newArt": "Sidebar middle, 224x168, matching 407 and 404",
+      "newArt": "Sidebar middle, 224x168, matching 407 and 404 (plank seams via tools/calm_planks.py)",
       "specSize": [
         224,
         168

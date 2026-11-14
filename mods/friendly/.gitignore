@@ -1,9 +1,11 @@
-# Rebuildable or third-party: font downloads, Python venv, 1.5x/2x fonts (tools/gen_fonts.py --scale)
+# Rebuildable or third-party: font downloads, Python venv, the 2x fonts (tools/gen_fonts.py --scale 2: 37 MB, only
+# used from UI scale 3.5, which no iPad reaches; without them the engine loads fonts@1.5x)
 tools/downloads/
 tools/.venv/
 __pycache__/
-data/gfx/fonts@1.5x/
-data/gfx/fonts@2x/
+Modding graphics/fonts@2x/
 # Sprites exported from the original game data are not ours to publish; the manifest is metadata only
 _originals/*
 !_originals/manifest.json
+# The repo's root .gitignore drops every *.ini; the mod's theme is part of the mod
+!Modding graphics/theme.ini

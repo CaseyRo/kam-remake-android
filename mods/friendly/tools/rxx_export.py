@@ -98,7 +98,7 @@ SPEC = {
         ([4], None, "Logo: Fraunces wordmark 'Knights & Merchants' with an oak ampersand and flourish"),
         ([5], None, "Crest becomes a hanging banner: moss with a tower"),
         ([6], None, "Crest becomes a hanging banner: oak with a wheat sheaf"),
-        ([9], None, "bsMenu tile. Flat moss #5D7E38, no baked light or lip (sampled in screen space at 2 screen px per texel)"),
+        ([9], None, "bsMenu tile. Flat moss #526F31 (cream text 5.6:1), no baked light or lip (sampled in screen space at 2 screen px per texel)"),
         ([17], None, "Linen parchment with painted rolling hills and a small town"),
         ([18], None, "Torn burnt frame becomes a rounded honey-oak frame, radius 18, walnut inner line"),
     ]),
