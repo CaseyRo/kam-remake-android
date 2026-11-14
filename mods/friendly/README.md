@@ -10,14 +10,28 @@ Mod", page "10 Final - Friendly Mod"; the full spec is `kam-friendly-mod-spec.md
 | Area | Sprites (archive_id) |
 |---|---|
 | Main menu: logo, two banners, menu button tile, backdrop, frame | 5_4, 5_5, 5_6, 5_9, 5_17, 5_18 |
+| Results screen backdrop (a wooden hall with a dark hanging behind the chart), locked campaign mission | 5_7, 5_10 |
 | Sidebar, game tile, message scroll, close button, slider, arrows, tab icons, back arrow | 4_402, 404, 407, 554, 409, 52, 132, 590, 591, 439-443 |
-| Pause/end clock, all 16 animation frames | 4_556-571 |
+| Pause/end clock, all 16 animation frames; win and defeat emblems for the play-more prompt | 4_556-571, 572, 573 |
 | Build menu: 29 house icons, road/field/wine/erase, "?" (unknown/locked) | 4_301-329, 335-337, 340, 41 |
-| Wares, construction stone/wood, ware groups, delivery, repair | 4_351-378, 654, 655, 657-659, 37, 40 |
+| Wares, construction stone/wood, ware groups | 4_351-378, 654, 655, 657-659 |
+| House actions: hand cart (accept, closed, take out), repair on and off | 4_37, 38, 664, 39, 40 |
 | Message tokens (text, house, group, chat, log, allies) | 4_491-496 |
 
-The sidebar planks (404, 407, 554) are plain boards with soft seams and no butt joints or grain: the build, stats and
-house grids are translucent and sit on 404, so anything busier shows through the buttons.
+The sidebar planks (404, 407, 554) are plain boards with soft seams and no butt joints: the build, stats and
+house grids are translucent and sit on 404, so anything busier shows through the buttons. They carry only a faint,
+generated wood grain (see Texture below).
+
+**Texture:** the map is dithered 1998 pixel art, so the flat surfaces carry a quiet, generated texture
+(`tools/texture_pass.py`): wood grain and a few soft knots on the planks (404, 407, 554), the game button face (402)
+and the results hall (5_7); paper fibres on the parchment (5_17, 5_18) and a linen weave on the message scroll
+(409); uniform grain only on the menu button tile 5_9, because the engine samples it in screen space; worn edges on
+the plates. The texture is zero-mean: each surface keeps its mean luminance within 1.1% and every 12 px block within
+5.5%, so label contrast is unchanged (cream on 5_9 5.3:1, ink on 402 5.3:1).
+
+**Win and defeat emblems** (4_572 laurel, 4_573 lowered banner) are drawn only when `theme.ini` points the play-more
+prompt at them (`PlayMoreWin=572`, `PlayMoreLose=573`); without the keys the prompt shows the clock 556 as before.
+572 and 573 are empty slots in GUI.rxx (r16397).
 
 The menu button tile 5_9 is flat moss #526F31, one step darker than the palette's moss #5D7E38, so the cream button
 captions measure 5.6:1 on it (4.5:1 or better even where a screen capture renders the green a little lighter).
@@ -72,7 +86,7 @@ hi-res path there, force a set with `KAM_FONT_SET=1` (`@1.5x`; `2` for `@2x`, `0
 
 ## Rebuilding
 
-Run the scripts with `tools/.venv/bin/python` (Pillow). To set up the venv: `uv venv tools/.venv && uv pip install --python tools/.venv pillow`.
+Run the scripts with `tools/.venv/bin/python` (Pillow). To set up the venv: `uv venv tools/.venv && uv pip install --python tools/.venv pillow numpy`.
 
 - `tools/rxx_export.py`: reads GUI.rxx and GUIMain.rxx and writes the original sprites, pivots and `manifest.json`
   (sizes and new-art notes) to `_originals/` (reference only, not shipped). With arguments
@@ -84,7 +98,14 @@ Run the scripts with `tools/.venv/bin/python` (Pillow). To set up the venv: `uv 
 - `tools/build_icons_html.py` and `tools/build_icons_sheet.py`: HTML plates for the build icons, and the contact sheet.
 - `tools/clock_frames.py`: after 4_0556.png changes, redraws frames 557-571 with the hand turned 22.5 degrees each.
 - `tools/calm_planks.py`: after 404, 407 or 554 is re-exported, repaints their planks as plain boards with soft seams
-  (keeps the vine strip, minimap frame, sign and ropes). Safe to run twice.
+  (keeps the vine strip, minimap frame, sign and ropes). Safe to run twice. Run `texture_pass.py` after it.
+- `tools/texture_pass.py`: adds the texture to 402, 404, 407, 409, 554, 5_7, 5_9, 5_17 and 5_18 in place, with fixed
+  seeds, and prints each surface's luminance before and after (`--check` only reports). A textured PNG carries the
+  text chunk `friendly-texture`, so the script skips it on a second run; run it after every new Paper export of those
+  sprites (exports come back flat).
+- `tools/locked_banner.py`: draws 5_10 (locked mission) from the unlocked banner 5_11 in `_originals/`: same
+  silhouette, linen and walnut at 58% opacity, a small padlock. `_originals/` is not in git: export 5_11 first with
+  `tools/rxx_export.py <game>/data/Sprites/GUIMain.rxx 5 _originals 11`.
 - Keep every PNG at the original's width and height (`_originals/manifest.json`), except the build icons 301-329
   and 335-337, 340, which are uniform 30x30 plates. GUI pictures are drawn centred by their pixel size
   (`TKMRenderUI.WritePicture`) and ignore the pivot, so a size change needs no `.txt`. None of these sprites has a
@@ -121,8 +142,13 @@ all SIL OFL 1.1; their licence texts are in `licenses/` and ship with the mod.
   mini cuts a sub-point sliver of the rim's anti-aliasing, and at 50-75% the rim's corner arc is visibly trimmed. Not
   checked on a device. Moving the frame inward would uncover the minimap's square corners, so the art stays as approved.
 - **5_18 is also the background of map-editor forms and the single-player results panel**, so its hills appear there too.
-- 37 (delivery) has related state sprites (probably 38 and 39) that still show the old art. The speed button
-  ("x1") next to the minimap is not repainted either.
+  The village silhouette is hidden in 5_18 (it sat behind list rows and the 'Weapons produced' value); 5_17 keeps it.
+- The speed button ("x1") next to the minimap is not repainted. The house worker button shows the unit's own
+  pixel icon, and the house action buttons keep the engine's 3D button face (402).
+- **The results backdrop 5_7 is dimmed 63% by the engine** (a black shape over it, `KM_GUIGameResultsSP`), so it reads
+  as a dusky hall; the hanging behind the chart stays near black for the chart lines.
+- Not seen in game this round: the texture, 5_7, 5_10, the house icons and the emblems were checked only on contact
+  sheets (`~/Desktop/kam-design-texture-before-after.png`).
 - Code items from spec section 6, not done here: per-scale sprites for 1.5x and 2x UI, RGBA8 for
   the outlined fonts (optional), rounded buttons (Write3DButton), warm bevels and chat colours. Panel, selection,
   disabled-text and checkbox colours are done through `theme.ini`.
