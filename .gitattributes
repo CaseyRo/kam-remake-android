@@ -77,3 +77,4 @@
 *.libx text eol=crlf
 *.script text eol=crlf
 
+*.patch -text
