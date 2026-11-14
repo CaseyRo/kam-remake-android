@@ -99,10 +99,13 @@ Run the scripts with `tools/.venv/bin/python` (Pillow). To set up the venv: `uv 
 - `tools/clock_frames.py`: after 4_0556.png changes, redraws frames 557-571 with the hand turned 22.5 degrees each.
 - `tools/calm_planks.py`: after 404, 407 or 554 is re-exported, repaints their planks as plain boards with soft seams
   (keeps the vine strip, minimap frame, sign and ropes). Safe to run twice. Run `texture_pass.py` after it.
-- `tools/texture_pass.py`: adds the texture to 402, 404, 407, 409, 554, 5_7, 5_9, 5_17 and 5_18 in place, with fixed
+- `tools/texture_pass.py`: adds the texture to 402, 404, 407, 409, 554, 5_7, 5_9 and 5_18 (5_17 comes from `backdrop_tile.py`) in place, with fixed
   seeds, and prints each surface's luminance before and after (`--check` only reports). A textured PNG carries the
   text chunk `friendly-texture`, so the script skips it on a second run; run it after every new Paper export of those
   sprites (exports come back flat).
+- `tools/backdrop_tile.py`: draws the menu backdrop 5_17 as a seamlessly tiling linen surface. The engine tiles
+  this sprite to fill the screen, so a scene shows hard bands in large windows; the hills live in the card 5_18.
+  It writes the `friendly-texture` chunk, so `texture_pass.py` leaves it alone.
 - `tools/locked_banner.py`: draws 5_10 (locked mission) from the unlocked banner 5_11 in `_originals/`: same
   silhouette, linen and walnut at 58% opacity, a small padlock. `_originals/` is not in git: export 5_11 first with
   `tools/rxx_export.py <game>/data/Sprites/GUIMain.rxx 5 _originals 11`.
