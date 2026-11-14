@@ -134,8 +134,8 @@ uses
 
 const
   SCROLL_SPEED_MULTIPLIER = 2.5;
-  // Game resolutions a host with a window offers (heights; see gHostSetDisplay). Higher = more map, smaller UI
-  HOST_HEIGHTS: array [0..4] of Integer = (720, 900, 1080, 1440, 2160);
+  // Interface sizes a touch host offers (gMainSettings.UIScale, see ApplyUIScale in KM_AndroidExports)
+  UI_SCALES: array [0..6] of Single = (0.5, 0.75, 1, 1.25, 1.5, 1.75, 2);
   BLOCK_SPAN = 18;
 
 
@@ -261,6 +261,8 @@ end;
 
 
 procedure TKMGUICommonOptions.CreateRes(var aTopBlock: Integer; var aLeftBlock: Integer);
+var
+  header: TKMLabel;
 begin
   if not IsMenu then Exit;
 
@@ -268,7 +270,7 @@ begin
   Panel_Res := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 175);
   NextBlock(aTopBlock, Panel_Res);
   Panel_Res.Anchors := [anLeft];
-    TKMLabel.Create(Panel_Res, 6, 0, 270, 20, gResTexts[TX_MENU_OPTIONS_RESOLUTION], fntOutline, taLeft);
+    header := TKMLabel.Create(Panel_Res, 6, 0, 270, 20, gResTexts[TX_MENU_OPTIONS_RESOLUTION], fntOutline, taLeft);
     TKMBevel.Create(Panel_Res, 0, 20, 280, Panel_Res.Height - 20);
 
     CheckBox_FullScreen := TKMCheckBox.Create(Panel_Res, 10, 30, 260, 20, gResTexts[TX_MENU_OPTIONS_FULLSCREEN], fntMetal);
@@ -283,20 +285,15 @@ begin
     Button_ResApply := TKMButton.Create(Panel_Res, 10, 125, 260, 30, gResTexts[TX_MENU_OPTIONS_APPLY], bsMenu);
     Button_ResApply.OnClick := ApplyResolution;
 
-  {$IF DEFINED(ANDROID) AND DEFINED(DARWIN)}
-  // A touch device has one screen-filling size: no panel. A Mac host (gHostSetDisplay) gets the window mode and
-  // the game resolution; refresh rates do not apply
-  if not Assigned(gHostSetDisplay) then
-  begin
-    Panel_Res.Hide;
-    aTopBlock := Panel_Res.Top;
-  end
-  else
-  begin
-    DropBox_RefreshRate.Hide;
-    Button_ResApply.Top := 90;
-  end;
-  {$IFEND}
+  {$IFDEF ANDROID}
+  // Touch hosts render at the screen's native size: the list picks the interface size. Only a Mac host
+  // (gHostSetDisplay) has a window mode; refresh rates do not apply
+  // shortcut: hardcoded English header, until there is a libx text for it
+  header.Caption := 'Interface size';
+  CheckBox_FullScreen.Visible := Assigned(gHostSetDisplay);
+  DropBox_RefreshRate.Hide;
+  Button_ResApply.Top := 90;
+  {$ENDIF}
 end;
 
 
@@ -793,13 +790,10 @@ var
   I: Integer;
   resID, refID: Integer;
 begin
-  {$IF DEFINED(ANDROID) AND DEFINED(DARWIN)}
-  if Assigned(gHostSetDisplay) then
-  begin
-    Button_ResApply.Enable;
-    Exit;
-  end;
-  {$IFEND}
+  {$IFDEF ANDROID}
+  Button_ResApply.Enable;
+  Exit;
+  {$ENDIF}
   if fResolutions.Count = 0 then Exit;
 
   DropBox_Resolution.Enabled := CheckBox_FullScreen.Checked;
@@ -838,15 +832,15 @@ var
   ResID, RefID: Integer;
   NewResolution: TKMScreenRes;
 begin
-  {$IF DEFINED(ANDROID) AND DEFINED(DARWIN)}
+  {$IFDEF ANDROID}
+  // kam_frame applies the new scale on the next frame
+  gMainSettings.UIScale := UI_SCALES[EnsureRange(DropBox_Resolution.ItemIndex, Low(UI_SCALES), High(UI_SCALES))];
+  gMainSettings.FullScreen := CheckBox_FullScreen.Checked;
   if Assigned(gHostSetDisplay) then
-  begin
-    gMainSettings.FullScreen := CheckBox_FullScreen.Checked;
-    gHostSetDisplay(Ord(CheckBox_FullScreen.Checked), HOST_HEIGHTS[DropBox_Resolution.ItemIndex]);
-    Button_ResApply.Disable;
-    Exit;
-  end;
-  {$IFEND}
+    gHostSetDisplay(Ord(CheckBox_FullScreen.Checked));
+  Button_ResApply.Disable;
+  Exit;
+  {$ENDIF}
   if fResolutions.Count = 0 then Exit;
 
   gMainSettings.FullScreen := CheckBox_FullScreen.Checked;
@@ -893,25 +887,22 @@ var
   resIndex: TKMScreenResIndex;
   selectedResolutionIndex: Integer;
 begin
-  {$IF DEFINED(ANDROID) AND DEFINED(DARWIN)}
-  if Assigned(gHostSetDisplay) then
+  {$IFDEF ANDROID}
+  // The entry nearest to the setting is selected
+  // shortcut: the check box follows the last Apply, not a full screen switch made with the window's own button
+  DropBox_Resolution.Clear;
+  selectedResolutionIndex := 0;
+  for I := Low(UI_SCALES) to High(UI_SCALES) do
   begin
-    // Shown for the current window shape; the entry nearest to the size in use is selected
-    // shortcut: the check box follows the last Apply, not a full screen switch made with the window's own button
-    DropBox_Resolution.Clear;
-    selectedResolutionIndex := 0;
-    for I := Low(HOST_HEIGHTS) to High(HOST_HEIGHTS) do
-    begin
-      DropBox_Resolution.Add(Format('%dx%d', [Round(HOST_HEIGHTS[I] * gHostScreenWidth / gHostScreenHeight), HOST_HEIGHTS[I]]));
-      if Abs(HOST_HEIGHTS[I] - gHostScreenHeight) < Abs(HOST_HEIGHTS[selectedResolutionIndex] - gHostScreenHeight) then
-        selectedResolutionIndex := I;
-    end;
-    DropBox_Resolution.ItemIndex := selectedResolutionIndex;
-    CheckBox_FullScreen.Checked := gMainSettings.FullScreen;
-    Button_ResApply.Disable;
-    Exit;
+    DropBox_Resolution.Add(Format('%d%%', [Round(UI_SCALES[I] * 100)]));
+    if Abs(UI_SCALES[I] - gMainSettings.UIScale) < Abs(UI_SCALES[selectedResolutionIndex] - gMainSettings.UIScale) then
+      selectedResolutionIndex := I;
   end;
-  {$IFEND}
+  DropBox_Resolution.ItemIndex := selectedResolutionIndex;
+  CheckBox_FullScreen.Checked := gMainSettings.FullScreen;
+  Button_ResApply.Disable;
+  Exit;
+  {$ENDIF}
   DropBox_Resolution.Clear;
   DropBox_RefreshRate.Clear;
 

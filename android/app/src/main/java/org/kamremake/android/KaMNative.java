@@ -16,6 +16,8 @@ final class KaMNative {
     static native boolean init(String dataDir, int width, int height);
     static native void frame();
     static native void resize(int width, int height);
+    /** Surface px per dp; call before init and resize */
+    static native void setUiDensity(float density);
     static native void pause();
     static native void resume();
     static native void shutdown();

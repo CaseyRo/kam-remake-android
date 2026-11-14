@@ -19,8 +19,16 @@ var
   gHostCursorPos: TPoint;
   // Pressed state of virtual keys (Windows VK codes)
   gHostKeyDown: array [0..255] of Boolean;
+  // Size the engine lays out and renders against, in UI units (buffer px / gHostUIScale)
   gHostScreenWidth: Integer = 1920;
   gHostScreenHeight: Integer = 1080;
+  // Native GL buffer size in px
+  gHostBufferWidth: Integer = 1920;
+  gHostBufferHeight: Integer = 1080;
+  // Buffer px per UI unit
+  gHostUIScale: Single = 1;
+  // Buffer px per OS point (UIScreen.scale, DisplayMetrics.density)
+  gHostDensity: Single = 1;
   gHostAppActive: Boolean = True;
   // Debug switches read from <data>/dbg.txt (render bisecting on device)
   gAndroidDbgMask: Cardinal = 0;
@@ -38,9 +46,8 @@ var
   gHostStopVideo: TKMHostStopVideo;
   // Optional: tells the host an achievement is unlocked (iOS reports it to Game Center), see KM_Achievements
   gHostAchievement: procedure(aId: PAnsiChar); cdecl;
-  // Optional: a host with a resizable window (Mac). Applies the window mode and the game resolution, given as the
-  // number of game pixels in the height of the view; the width follows the window's shape
-  gHostSetDisplay: procedure(aFullScreen, aHeight: Integer); cdecl;
+  // Optional: a host with a resizable window (Mac). Applies the window mode
+  gHostSetDisplay: procedure(aFullScreen: Integer); cdecl;
 
 
 

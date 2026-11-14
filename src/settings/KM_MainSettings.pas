@@ -27,6 +27,8 @@ type
     FullScreen: Boolean;
     Resolution: TKMScreenRes;
     VSync: Boolean;
+    // Touch hosts: GUI size factor, 1 = one UI unit per OS point (see ApplyUIScale in KM_AndroidExports)
+    UIScale: Single;
 
     constructor Create(aScreenWidth, aScreenHeight: Integer);
     destructor Destroy; override;
@@ -49,6 +51,17 @@ var
 implementation
 uses
   SysUtils, INIfiles, Math, Forms;
+
+
+// First-run interface size: a touch host may set KAM_UI_SCALE_DEFAULT (iPad: 1.5), otherwise 1
+function DefaultUIScale: Single;
+var
+  code: Integer;
+begin
+  Val(GetEnvironmentVariable('KAM_UI_SCALE_DEFAULT'), Result, code);
+  if (code <> 0) or not InRange(Result, 0.5, 2) then
+    Result := 1;
+end;
 
 const
   NO_RENDER_MAX_TIME_MIN = 10; //in ms
@@ -100,6 +113,7 @@ begin
   Resolution.Width   := nGFX.Attributes['ResolutionWidth'].AsInteger(Max(MENU_DESIGN_X, fScreenWidth));
   Resolution.Height  := nGFX.Attributes['ResolutionHeight'].AsInteger(Max(MENU_DESIGN_Y, fScreenHeight));
   Resolution.RefreshRate := nGFX.Attributes['RefreshRate'].AsInteger(60);
+  UIScale            := nGFX.Attributes['UIScale'].AsFloat(DefaultUIScale);
   fFPSCap := EnsureRange(nGFX.Attributes['FPSCap'].AsInteger(DEF_FPS_CAP), MIN_FPS_CAP, MAX_FPS_CAP);
 
   // Window
@@ -152,6 +166,7 @@ begin
     nGFX.Attributes['ResolutionHeight'] := Resolution.Height;
     nGFX.Attributes['RefreshRate']      := Resolution.RefreshRate;
     nGFX.Attributes['FPSCap']           := fFPSCap;
+    nGFX.Attributes['UIScale']          := UIScale;
 
   // Window
   nWindow := nMainSettings.AddOrFindChild('Window');

@@ -600,7 +600,7 @@ begin
   try
     //glEnable(GL_LINE_SMOOTH); //Smooth lines actually look odd in KaM
     glTranslatef(aLeft, aTop, 0);
-    glLineWidth(aLineWidth);
+    glLineWidth(aLineWidth * gRender.UIScale);
     glColor4ubv(@aColor);
     glBegin(GL_LINE_STRIP);
       for I := 0 to High(aValues) do
@@ -622,7 +622,7 @@ begin
 
   glPushAttrib(GL_LINE_BIT);
   try
-    glLineWidth(aLineWidth);
+    glLineWidth(aLineWidth * gRender.UIScale);
     glColor4ubv(@Col);
     glBegin(GL_LINE_LOOP);
       glkRect(aLeft + aLineWidth / 2, aTop + aLineWidth / 2, aLeft + aWidth - aLineWidth / 2, aTop + aHeight - aLineWidth / 2);
@@ -645,7 +645,7 @@ begin
     glBegin(GL_QUADS);
       glkRect(aLeft, aTop, aLeft + aWidth, aTop + aHeight);
     glEnd;
-    glLineWidth(1);
+    glLineWidth(gRender.UIScale);
     glColor4ubv(@Outline);
     glBegin(GL_LINE_LOOP);
       glkRect(aLeft + 0.5, aTop + 0.5, aLeft + aWidth - 0.5, aTop + aHeight - 0.5);
@@ -665,7 +665,7 @@ begin
   TKMRender.BindTexture(0);
 
   glColor4ubv(@aColor);
-  glLineStipple(2, aPattern);
+  glLineStipple(Math.Max(1, Round(2 * gRender.UIScale)), aPattern);
   glBegin(GL_POLYGON);
     for I := 0 to High(aPoints) do
       glVertex2f(aPoints[I].X, aPoints[I].Y);
@@ -681,7 +681,7 @@ begin
   TKMRender.BindTexture(0);
 
   glColor4ubv(@aColor);
-  glLineStipple(2, aPattern);
+  glLineStipple(Math.Max(1, Round(2 * gRender.UIScale)), aPattern);
   glBegin(GL_POLYGON);
     for I := 0 to High(aPoints) do
       glVertex2f(aPoints[I].X, aPoints[I].Y);
@@ -699,14 +699,14 @@ begin
   if aLineWidth <> -1 then
   begin
     glPushAttrib(GL_LINE_BIT);
-    glLineWidth(aLineWidth);
+    glLineWidth(aLineWidth * gRender.UIScale);
   end;
 
   // Solid pattern needs no stipple (stipple is emulated with an extra texture pass on GLES)
   if aPattern <> $FFFF then
   begin
     glEnable(GL_LINE_STIPPLE);
-    glLineStipple(2, aPattern);
+    glLineStipple(Math.Max(1, Round(2 * gRender.UIScale)), aPattern);
   end;
 
   glBegin(GL_LINES);

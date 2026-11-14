@@ -58,6 +58,7 @@ type
     property RendererVersion: UnicodeString read fOpenGL_Version;
     function IsOldGLVersion: Boolean;
     procedure Resize(aWidth, aHeight: Integer);
+    function UIScale: Single;
 
     procedure ReadRenderedToScreenPixels(var aWidth, aHeight: Integer; var aPixelData: TKMCardinalArray);
     procedure ReadRenderedToFBOPixels(var aWidth, aHeight: Integer; var aPixelData: TKMCardinalArray);
@@ -81,6 +82,7 @@ implementation
 uses
   SysUtils, Math,
   KromOGLUtils, KromUtils,
+  {$IFDEF ANDROID} KMAndroidHost, {$ENDIF}
   KM_Log, KM_Defaults, KM_IoPNG, KM_CommonClasses;
 
 const
@@ -192,7 +194,23 @@ begin
 
   fScreenX := max(aWidth, 1);
   fScreenY := max(aHeight, 1);
+  {$IFDEF ANDROID}
+  // Touch hosts: Screen X/Y are UI units, the ortho in SetRenderMode maps them onto the native buffer (UI scale)
+  glViewport(0, 0, Max(gHostBufferWidth, 1), Max(gHostBufferHeight, 1));
+  {$ELSE}
   glViewport(0, 0, fScreenX, fScreenY);
+  {$ENDIF}
+end;
+
+
+// Physical pixels per UI unit (line widths and point sizes are in physical pixels)
+function TKMRender.UIScale: Single;
+begin
+  {$IFDEF ANDROID}
+  Result := gHostUIScale;
+  {$ELSE}
+  Result := 1;
+  {$ENDIF}
 end;
 
 

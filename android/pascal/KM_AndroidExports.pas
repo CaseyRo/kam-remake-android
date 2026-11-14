@@ -38,6 +38,8 @@ procedure kam_set_callbacks(aCallbacks: PKMHostCallbacks); cdecl;
 function kam_init(aDataDir: PAnsiChar; aWidth, aHeight: Integer): Integer; cdecl;
 procedure kam_frame; cdecl;
 procedure kam_resize(aWidth, aHeight: Integer); cdecl;
+// Buffer px per OS point (UIScreen.scale, DisplayMetrics.density). Call before kam_init and kam_resize
+procedure kam_set_ui_density(aDensity: Single); cdecl;
 procedure kam_pause; cdecl;
 procedure kam_resume; cdecl;
 procedure kam_shutdown; cdecl;
@@ -58,7 +60,7 @@ type
   TKMHostAchievementProc = procedure(aId: PAnsiChar); cdecl;
 procedure kam_set_achievement_callback(aCallback: TKMHostAchievementProc); cdecl;
 type
-  TKMHostDisplayProc = procedure(aFullScreen, aHeight: Integer); cdecl;
+  TKMHostDisplayProc = procedure(aFullScreen: Integer); cdecl;
 procedure kam_set_display_callback(aCallback: TKMHostDisplayProc); cdecl;
 
 implementation
@@ -67,12 +69,12 @@ uses
   KM_Main, KM_GameApp, KM_Defaults, KM_Points, KM_Cursor,
   KM_InterfaceDefaults, KM_InterfaceGame, KM_InterfaceGamePlay, KM_InterfaceMapEditor, KM_Game, KM_Viewport,
   KM_Controls, KM_ControlsEdit,
-  KM_Log, dglOpenGL, KM_ResSprites, KM_ResTypes, KM_Video, KM_Render,
+  KM_Log, dglOpenGL, KM_ResSprites, KM_ResTypes, KM_Video, KM_Render, KM_MainSettings,
   KM_AndroidSelfTest,
   KMAndroidHost, KMAndroidLog;
 
 const
-  TAP_SLOP = 14;          // px (render resolution) finger can move and still be a tap
+  TAP_SLOP = 14;          // UI units finger can move and still be a tap
   LONG_PRESS_MS = 450;    // hold time to become a right button press
   TWO_FINGER_TAP_MS = 300;
 
@@ -260,6 +262,50 @@ begin
 end;
 {$ENDIF}
 
+procedure kam_set_ui_density(aDensity: Single); cdecl;
+begin
+  gHostDensity := Max(aDensity, 0.5);
+end;
+
+
+// The one place UI scale meets the engine: the GL buffer is the native size, the engine lays out and gets input in
+// UI units (buffer / s). s = UIScale setting * density, clamped so the UI never drops below the design minimum
+// (menus 1024x720, in game 830x400). Returns True when s changed
+function ApplyUIScale(aBufW, aBufH: Integer): Boolean;
+const
+  MENU_MIN_W = 1024; MENU_MIN_H = 720;
+  GAME_MIN_W = 830; GAME_MIN_H = 400;
+var
+  u, s: Single;
+  minW, minH: Integer;
+begin
+  u := 1;
+  if gMainSettings <> nil then
+    u := EnsureRange(gMainSettings.UIScale, 0.5, 2);
+  if kam_in_game = 1 then
+  begin
+    minW := GAME_MIN_W;
+    minH := GAME_MIN_H;
+  end else
+  begin
+    minW := MENU_MIN_W;
+    minH := MENU_MIN_H;
+  end;
+  s := Max(Min(u * gHostDensity, Min(aBufW / minW, aBufH / minH)), 0.1);
+
+  Result := Abs(s - gHostUIScale) > 0.001;
+  gHostBufferWidth := aBufW;
+  gHostBufferHeight := aBufH;
+  gHostUIScale := s;
+  gHostScreenWidth := Max(1, Round(aBufW / s));
+  gHostScreenHeight := Max(1, Round(aBufH / s));
+  // The 0.1 floor only binds on a buffer smaller than a tenth of the minimum. Single 0.1 <> the Double literal 0.1
+  Assert((s <= 0.1 + 1E-6) or((gHostScreenWidth >= minW - 1) and (gHostScreenHeight >= minH - 1)), 'UI below design minimum');
+  if Result then
+    ALog(Format('UI scale %.3f: buffer %dx%d, UI %dx%d', [s, aBufW, aBufH, gHostScreenWidth, gHostScreenHeight]));
+end;
+
+
 function kam_init(aDataDir: PAnsiChar; aWidth, aHeight: Integer): Integer; cdecl;
 begin
   {$IFDEF DARWIN}
@@ -281,15 +327,14 @@ begin
     // would trigger from the last touch point. It is re-enabled when a physical mouse is used
     IGNORE_MOUSE_SCROLLING := True;
     ExeDir := IncludeTrailingPathDelimiter(UTF8Decode(aDataDir));
-    gHostScreenWidth := aWidth;
-    gHostScreenHeight := aHeight;
-    ALog(Format('kam_init: %s %dx%d', [string(ExeDir), aWidth, aHeight]));
+    ApplyUIScale(aWidth, aHeight);
+    ALog(Format('kam_init: %s buffer %dx%d, UI %dx%d', [string(ExeDir), aWidth, aHeight, gHostScreenWidth, gHostScreenHeight]));
 
     gMain := TKMMain.Create;
     {$IFDEF ANDROID_GLDEBUG}
     gOnGLInitialized := InstallGLDebugHooks;
     {$ENDIF}
-    if gMain.Start(aWidth, aHeight) then
+    if gMain.Start(gHostScreenWidth, gHostScreenHeight) then
       Result := 1;
   except
     on E: Exception do
@@ -424,6 +469,9 @@ procedure kam_frame; cdecl;
 begin
   if (gMain = nil) or not gMain.Started then Exit;
   try
+    // Picks up a changed setting, menu <-> game and the results page (each has its own minimum UI size)
+    if ApplyUIScale(gHostBufferWidth, gHostBufferHeight) then
+      gMain.SurfaceResized(gHostScreenWidth, gHostScreenHeight);
     CheckSynchronize;
     CheckLongPress;
     if SelfTestActive then
@@ -446,10 +494,9 @@ end;
 
 procedure kam_resize(aWidth, aHeight: Integer); cdecl;
 begin
-  gHostScreenWidth := aWidth;
-  gHostScreenHeight := aHeight;
+  ApplyUIScale(aWidth, aHeight);
   if gMain <> nil then
-    gMain.SurfaceResized(aWidth, aHeight);
+    gMain.SurfaceResized(gHostScreenWidth, gHostScreenHeight);
 end;
 
 
@@ -688,8 +735,9 @@ var
 begin
   if (gGameApp = nil) or (gMain = nil) or not gMain.Started then Exit;
   try
-    P0 := MakePointF(X0, Y0);
-    P1 := MakePointF(X1, Y1);
+    // Host sends buffer px, the engine works in UI units
+    P0 := MakePointF(X0 / gHostUIScale, Y0 / gHostUIScale);
+    P1 := MakePointF(X1 / gHostUIScale, Y1 / gHostUIScale);
 
     case aAction of
       TOUCH_DOWN:
@@ -853,6 +901,8 @@ var
 begin
   if gGameApp = nil then Exit;
   IGNORE_MOUSE_SCROLLING := False;
+  X := Round(X / gHostUIScale);
+  Y := Round(Y / gHostUIScale);
   case aButton of
     1: btn := mbRight;
     2: btn := mbMiddle;
@@ -872,6 +922,8 @@ var
 begin
   if gGameApp = nil then Exit;
   handled := False;
+  X := Round(X / gHostUIScale);
+  Y := Round(Y / gHostUIScale);
   gGameApp.MouseWheel(fButtons, aSteps, X, Y, handled);
 end;
 
@@ -963,7 +1015,7 @@ begin
 end;
 
 
-// Bottom edge (render coordinates) of the focused text field, -1 if none. Used to keep it above the soft keyboard
+// Bottom edge (buffer px) of the focused text field, -1 if none. Used to keep it above the soft keyboard
 function kam_text_input_bottom: Integer; cdecl;
 var
   ctrls: TKMMasterControl;
@@ -979,6 +1031,7 @@ begin
       ScrollSidebarOf(gGameApp.ActiveInterface, Result - gHostScreenHeight + 4);
       Result := ctrls.CtrlFocus.AbsTop + ctrls.CtrlFocus.Height;
     end;
+    Result := Round(Result * gHostUIScale);
   end;
 end;
 

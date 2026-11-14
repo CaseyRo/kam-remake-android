@@ -28,6 +28,7 @@ extern void kam_set_callbacks(kam_host_callbacks *cb);
 extern int kam_init(const char *dataDir, int width, int height);
 extern void kam_frame(void);
 extern void kam_resize(int width, int height);
+extern void kam_set_ui_density(float density); // buffer px per point, before kam_init and kam_resize
 extern void kam_pause(void);
 extern void kam_resume(void);
 extern void kam_mouse(int action, int button, int x, int y);
@@ -39,14 +40,10 @@ extern int kam_text_input_active(void);
 extern void kam_video_finished(void);
 extern void kam_selftest(const char *mode);
 extern void kam_set_achievement_callback(void (*callback)(const char *identifier));
-extern void kam_set_display_callback(void (*callback)(int fullScreen, int height));
+extern void kam_set_display_callback(void (*callback)(int fullScreen));
 
 enum { TOUCH_DOWN = 0, TOUCH_MOVE = 1, TOUCH_UP = 2, TOUCH_CANCEL = 3, TOUCH_POINTER_DOWN = 5, TOUCH_POINTER_UP = 6 };
 enum { VK_BACK = 8, VK_RETURN = 13, VK_SPACE = 32 };
-// Game resolution the original UI is designed for (same as the Android port)
-static const float BASE_WIDTH = 1024, BASE_HEIGHT = 720;
-// Game pixels in the height of the view. Fixed on touch devices; on a Mac the Options page changes it (cb_set_display)
-static float gGameHeight = BASE_HEIGHT;
 // Deep recursion in the engine (terrain flood fill on big maps) needs far more than the default thread stack
 static const size_t RENDER_THREAD_STACK = 128u << 20;
 
@@ -61,7 +58,6 @@ static void video_finish(void);
 - (void)startWithDataDir:(NSString *)dataDir;
 - (void)setPaused:(BOOL)paused;
 - (void)post:(dispatch_block_t)event;
-- (void)relayout;
 - (void)handlePresses:(NSSet<UIPress *> *)presses down:(BOOL)down;
 @end
 
@@ -71,7 +67,8 @@ static void video_finish(void);
   NSMutableArray<UITouch *> *_touches;       // active touches, oldest first
   EAGLContext *_context;
   GLuint _fbo, _color, _depth;
-  int _bufW, _bufH;                          // render buffer (game resolution) in pixels
+  int _bufW, _bufH;                          // render buffer (native display resolution) in pixels
+  volatile float _density;                   // buffer pixels per point
   CGSize _layoutSize;                        // view size in points the buffers were made for
   volatile BOOL _paused, _resized;
   BOOL _keyboardShown;
@@ -107,18 +104,10 @@ static void video_finish(void);
   CGSize s = self.bounds.size;
   if (s.width <= 0 || CGSizeEqualToSize(s, _layoutSize)) return;
   _layoutSize = s;
-  // The layer buffer gets the game resolution and is stretched to the screen, so the original UI stays readable
-  // Never more game pixels than the display has
-  float gameHeight = MAX(BASE_HEIGHT, MIN(gGameHeight, s.height * (self.window.screen.scale ?: 1)));
-  float scale = MAX(MIN(s.height / gameHeight, s.width / (gameHeight * BASE_WIDTH / BASE_HEIGHT)), 0.25f);
-  self.layer.contentsScale = 1 / scale;
+  // Native resolution: the engine scales its UI itself (Options > Interface size)
+  _density = self.window.screen.scale ?: 1;
+  self.layer.contentsScale = _density;
   _resized = YES;
-}
-
-// The game resolution changed: lay out again although the view kept its size
-- (void)relayout {
-  _layoutSize = CGSizeZero;
-  [self setNeedsLayout];
 }
 
 // Render thread. (Re)creates the framebuffer for the current layer size
@@ -144,7 +133,7 @@ static void video_finish(void);
   NSLog(@"KaMHost: framebuffer %dx%d, status %x", _bufW, _bufH, glCheckFramebufferStatus(GL_FRAMEBUFFER));
 }
 
-// Test aid: KAM_TAPS="12:548,340;15:300,200" taps those game coordinates that many seconds after start
+// Test aid: KAM_TAPS="12:548,340;15:300,200" taps those buffer pixel coordinates that many seconds after start
 - (void)testTaps {
   static const char *p;
   static double t0, at;
@@ -173,7 +162,9 @@ static void video_finish(void);
   [self createBuffers];
   setenv("LIBGL_LOGSHADERERROR", "1", 1); // gl4es setting, read when the engine initializes it
   if (NSProcessInfo.processInfo.isiOSAppOnMac) setenv("KAM_SHOW_QUIT", "1", 1); // main menu keeps "Exit Game" on a Mac
+  else setenv("KAM_UI_SCALE_DEFAULT", "1.5", 0); // iPad: first-run interface size close to the old stretched UI
 
+  kam_set_ui_density(_density ?: 1);
   if (!kam_init(_dataDir.fileSystemRepresentation, _bufW, _bufH)) return; // the engine has shown the reason
 
   for (;;) {
@@ -188,6 +179,7 @@ static void video_finish(void);
       if (_resized) {
         _resized = NO;
         [self createBuffers];
+        kam_set_ui_density(_density ?: 1);
         kam_resize(_bufW, _bufH);
       }
       // gl4es never binds a framebuffer for this engine, but keep ours bound whatever it does internally
@@ -554,34 +546,12 @@ static void mac_set_full_screen(BOOL fullScreen) {
     ((void (*)(id, SEL, id))objc_msgSend)(window, NSSelectorFromString(@"toggleFullScreen:"), nil);
 }
 
-// Windowed: the window takes the chosen resolution, one game pixel per point, keeping its shape (capped to the
-// screen). Full screen: the chosen resolution is stretched over the display
-static void cb_set_display(int fullScreen, int height) {
+// Window mode from the Options page; the window keeps its size, the engine handles the interface size
+static void cb_set_display(int fullScreen) {
   dispatch_async(dispatch_get_main_queue(), ^{
     [NSUserDefaults.standardUserDefaults setBool:fullScreen forKey:@"fullScreen"];
-    [NSUserDefaults.standardUserDefaults setInteger:height forKey:@"gameHeight"];
-    gGameHeight = height;
     mac_set_full_screen(fullScreen);
-    id window = mac_window();
-    if (!fullScreen && window) {
-      // The system sizes this window from its scene and ignores NSWindow resizing. The request below is the Mac
-      // Catalyst geometry API: not declared for iPad apps, but present at run time when one runs on a Mac.
-      // Window frames are in Mac points, the view in iPad points (a Mac shows iPad apps scaled down): k converts
-      CGSize view = gView.bounds.size, screen = [[[window valueForKey:@"screen"] valueForKey:@"visibleFrame"] CGRectValue].size;
-      CGRect frame = [[window valueForKey:@"frame"] CGRectValue];
-      CGFloat k = frame.size.width / gView.superview.bounds.size.width, chrome = frame.size.height - gView.superview.bounds.size.height * k; // title bar
-      CGFloat h = MIN(height * k, screen.height - chrome), w = MIN(h * view.width / view.height, screen.width);
-      frame = CGRectMake(frame.origin.x + (frame.size.width - w) / 2, frame.origin.y + (frame.size.height - h - chrome) / 2, w, h + chrome);
-      id prefs = [NSClassFromString(@"UIWindowSceneGeometryPreferencesMac") new];
-      [prefs setValue:[NSValue valueWithCGRect:frame] forKey:@"systemFrame"];
-      if (prefs)
-        [gView.window.windowScene requestGeometryUpdateWithPreferences:prefs errorHandler:^(NSError *e) {
-          NSLog(@"KaMHost: window resize refused: %@", e);
-        }];
-      else NSLog(@"KaMHost: no window geometry API, window keeps its size");
-    }
-    NSLog(@"KaMHost: display fullScreen=%d height=%d", fullScreen, height);
-    [gView relayout];
+    NSLog(@"KaMHost: display fullScreen=%d", fullScreen);
   });
 }
 
@@ -772,7 +742,6 @@ static NSArray<NSString *> *data_folders(void) {
   kam_set_achievement_callback(cb_achievement);
   if (NSProcessInfo.processInfo.isiOSAppOnMac) {
     kam_set_display_callback(cb_set_display);
-    gGameHeight = [NSUserDefaults.standardUserDefaults integerForKey:@"gameHeight"] ?: BASE_HEIGHT;
   }
   application.idleTimerDisabled = YES;
   return YES;

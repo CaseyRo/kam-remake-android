@@ -30,7 +30,7 @@ App icon: put a 1024 x 1024 `icon-1024.png` into `ios/host/Assets.xcassets/AppIc
 ## Testing
 
 - `KAM_SELFTEST=all ios/run_ipad.sh 540` starts every mission and map (see `android/pascal/KM_AndroidSelfTest.pas`).
-- `KAM_TAPS="12:548,340;15:300,200"` taps game coordinates at the given seconds after start.
+- `KAM_TAPS="12:548,340;15:300,200"` taps those buffer pixels (native resolution, not UI units) at the given seconds after start.
 - `KAM_LOG_INPUT=1` logs hardware key, mouse and wheel events.
 
 ## What differs from the Android port
