@@ -1,0 +1,66 @@
+# xcodegen spec: `brew install xcodegen && cd ios && xcodegen` creates KaM.xcodeproj
+name: KaM
+options:
+  bundleIdPrefix: org.kamremake
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  KaM:
+    type: application
+    platform: iOS
+    sources:
+      - host
+      # Filled for the Mac build only (run_mac.sh); an empty folder otherwise (run_ipad.sh)
+      - path: build/gamedata
+        type: folder
+        buildPhase: resources
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: ${KAM_BUNDLE_ID}
+      TARGETED_DEVICE_FAMILY: "1,2" # iPhone family only for iPhone Duo; small screens get the "unfold" hint
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      CODE_SIGN_STYLE: Automatic
+      DEVELOPMENT_TEAM: ${KAM_TEAM}
+      LD_RUNPATH_SEARCH_PATHS: "@executable_path/Frameworks"
+      FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/build/ios/frameworks"
+      ENABLE_BITCODE: NO
+      CLANG_ENABLE_OBJC_ARC: YES
+      GCC_PREPROCESSOR_DEFINITIONS: "GLES_SILENCE_DEPRECATION=1"
+    entitlements:
+      path: host/KaM.entitlements
+      properties:
+        com.apple.developer.game-center: true
+    info:
+      path: host/Info.plist
+      properties:
+        CFBundleDisplayName: KaM Remake
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: ${KAM_BUILD_NUMBER}
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default
+                UISceneDelegateClassName: SceneDelegate
+        UIStatusBarHidden: true
+        UIApplicationSupportsIndirectInputEvents: true
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        # All orientations are declared so that the window is freely resizable (Mac, iPad windowing); the view
+        # controller keeps the game in landscape
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight, UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight, UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown]
+    dependencies:
+      - sdk: UIKit.framework
+      - sdk: OpenGLES.framework
+      - sdk: QuartzCore.framework
+      - sdk: AVFoundation.framework
+      - sdk: GameKit.framework
+      - sdk: GameController.framework
+      - framework: build/ios/frameworks/kamcore.framework
+        embed: true
+      - framework: build/ios/frameworks/openal.framework
+        embed: true
+      - framework: build/ios/frameworks/bass.framework
+        embed: true

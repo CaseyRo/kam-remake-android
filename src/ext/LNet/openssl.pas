@@ -1297,6 +1297,10 @@ end;
 
 function InitSSLInterface: Boolean;
 begin
+    {$IF DEFINED(ANDROID) AND DEFINED(DARWIN)}
+    // iOS port: no system OpenSSL (and macOS aborts the process when the unversioned libcrypto is loaded)
+    Exit(False);
+    {$IFEND}
     if not IsSSLloaded then
     begin
       SSLLibHandle := LoadLib(DLLSSLName);

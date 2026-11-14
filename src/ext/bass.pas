@@ -12,6 +12,8 @@
 }
 
 unit Bass;
+// iOS port: C symbols get their leading underscore only with cdecl (same ABI as stdcall on arm64)
+{$IFDEF DARWIN}{$MACRO ON}{$DEFINE stdcall:=cdecl}{$ENDIF}
 
 interface
 

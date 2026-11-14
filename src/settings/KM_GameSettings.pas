@@ -68,6 +68,7 @@ type
     fSpecShowBeacons: Boolean;   //Spectator variable - show beacons while spectating
     fShowGameTime: Boolean;      //Show game time label (always)
     fShowGameSpeed: Boolean;     //Show game speed label and clock (always)
+    fSidebarOnRight: Boolean;    //Gameplay sidebar on the right screen edge (applied when a game starts)
 
     fSaveCheckpoints: Boolean; //Save game checkpoint for replay
     fSaveCheckpointsFreq: Integer;
@@ -184,6 +185,7 @@ type
     property SpecShowBeacons: Boolean read fSpecShowBeacons write fSpecShowBeacons;
     property ShowGameTime: Boolean read fShowGameTime write fShowGameTime;
     property ShowGameSpeed: Boolean read fShowGameSpeed write fShowGameSpeed;
+    property SidebarOnRight: Boolean read fSidebarOnRight write fSidebarOnRight;
 
     property SaveCheckpoints: Boolean read fSaveCheckpoints write fSaveCheckpoints;
     property SaveCheckpointsFreq: Integer read fSaveCheckpointsFreq write SetSaveCheckpointsFreq;
@@ -480,6 +482,7 @@ begin
       fSpecShowBeacons := nGameMisc.Attributes['SpecShowBeacons'].AsBoolean(False);
       fShowGameTime    := nGameMisc.Attributes['ShowGameTime'].AsBoolean(False);
       fShowGameSpeed   := nGameMisc.Attributes['ShowGameSpeed'].AsBoolean(False);
+      fSidebarOnRight  := nGameMisc.Attributes['SidebarOnRight'].AsBoolean(False);
       fDayGamesCount   := nGameMisc.Attributes['DayGamesCount'].AsInteger(0);
       if nGameMisc.HasAttribute('LastDayGamePlayed') then
         fLastDayGamePlayed  := nGameMisc.Attributes['LastDayGamePlayed'].AsDateTime
@@ -671,6 +674,7 @@ begin
       nGameMisc.Attributes['SpecShowBeacons']   := fSpecShowBeacons;
       nGameMisc.Attributes['ShowGameTime']      := fShowGameTime;
       nGameMisc.Attributes['ShowGameSpeed']     := fShowGameSpeed;
+      nGameMisc.Attributes['SidebarOnRight']    := fSidebarOnRight;
       nGameMisc.Attributes['DayGamesCount']     := fDayGamesCount;
       nGameMisc.Attributes['LastDayGamePlayed'] := fLastDayGamePlayed;
 

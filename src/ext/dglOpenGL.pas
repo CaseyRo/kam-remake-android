@@ -474,6 +474,7 @@ uses
   {$IFDEF DGL_WIN}, Windows{$ENDIF}
   {$IFDEF DGL_LINUX}, X, XLib, XUtil, types {$ENDIF}
   {$IFDEF DGL_ANDROID}, types {$ENDIF}
+  {$IFDEF KAM_GL4ES}, KMAndroidHost {$ENDIF}
 
   ;
 
@@ -12902,7 +12903,7 @@ const
   GLU_LIBNAME = 'GLU32.dll';
 {$ELSE}
   {$IFDEF darwin}
-    OPENGL_LIBNAME = 'libGL.dylib';
+    OPENGL_LIBNAME = {$IFDEF KAM_GL4ES}'/System/Library/Frameworks/OpenGLES.framework/OpenGLES'{$ELSE}{$IFDEF ANDROID}'@rpath/libGL.dylib'{$ELSE}'libGL.dylib'{$ENDIF}{$ENDIF}; // iOS port: see KAM_GL4ES below
     GLU_LIBNAME = 'libGLU.dylib';
   {$ELSE}
     OPENGL_LIBNAME = {$IFDEF ANDROID}'libGL.so'{$ELSE}'libGL.so.1'{$ENDIF};
@@ -13164,12 +13165,33 @@ const
   RTLD_BINDING_MASK = $003;
 
   // Seems to work on Debian / Fedora
-  LibraryLib = {$IFDEF DGL_ANDROID} 'libdl.so'{$ELSE}{$IFDEF Linux} 'libdl.so.2'{$ELSE} 'c'{$ENDIF}{$ENDIF};
+  LibraryLib = {$IFDEF DARWIN} 'c'{$ELSE}{$IFDEF DGL_ANDROID} 'libdl.so'{$ELSE}{$IFDEF Linux} 'libdl.so.2'{$ELSE} 'c'{$ENDIF}{$ENDIF}{$ENDIF};
 
 function dlopen(Name: PAnsiChar; Flags: LongInt): Pointer; cdecl; external LibraryLib name 'dlopen';
 function dlclose(Lib: Pointer): LongInt; cdecl; external LibraryLib name 'dlclose';
 
 function dlsym(Lib: Pointer; Name: PAnsiChar): Pointer; cdecl; external LibraryLib name 'dlsym';
+{$ENDIF}
+
+{$IFDEF KAM_GL4ES}
+// iOS port: gl4es (desktop GL on OpenGL ES 2) is linked statically into the engine. Mach-O has no symbol aliases,
+// so gl4es exports no gl* names there: entry points are looked up by name. The GL ES context and framebuffer
+// are created by the host app before the engine starts.
+procedure set_getprocaddress(aProc: Pointer); cdecl; external;
+procedure set_getmainfbsize(aProc: Pointer); cdecl; external;
+procedure initialize_gl4es; cdecl; external;
+function gl4es_GetProcAddress(aName: PAnsiChar): Pointer; cdecl; external;
+
+function Gl4esGlesProc(aName: PAnsiChar): Pointer; cdecl;
+begin
+  Result := dlsym(GL_LibHandle, aName);
+end;
+
+procedure Gl4esMainFBSize(aWidth, aHeight: PInteger); cdecl;
+begin
+  aWidth^ := gHostScreenWidth;
+  aHeight^ := gHostScreenHeight;
+end;
 {$ENDIF}
 
 
@@ -13212,8 +13234,12 @@ begin
   {$ENDIF}
 
   {$IFDEF DGL_ANDROID}
+    {$IFDEF KAM_GL4ES}
+    Result := gl4es_GetProcAddress(ProcName);
+    {$ELSE}
     if LibHandle <> nil then
       Result := dlsym(LibHandle, ProcName);
+    {$ENDIF}
   {$ENDIF}
 
   {$IFDEF DGL_WIN}
@@ -13310,6 +13336,12 @@ begin
   // load library
   GL_LibHandle := dglLoadLibrary(PChar(LibName));
   GLU_LibHandle := dglLoadLibrary(PChar(GLULibName));
+
+  {$IFDEF KAM_GL4ES}
+  set_getprocaddress(@Gl4esGlesProc);
+  set_getmainfbsize(@Gl4esMainFBSize);
+  initialize_gl4es;
+  {$ENDIF}
 
   // load GL functions
   if (GL_LibHandle <> nil) then begin

@@ -7,7 +7,9 @@
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <AL/alext.h>
+#ifndef __APPLE__ // iOS port logs to stderr
 #include <android/log.h>
+#endif
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -21,7 +23,11 @@
 #include "minimp3_ex.h"
 #include <vorbis/vorbisfile.h>
 
+#ifdef __APPLE__
+#define LOG(...) (fprintf(stderr, "KaMBass: " __VA_ARGS__), fputc('\n', stderr))
+#else
 #define LOG(...) __android_log_print(ANDROID_LOG_INFO, "KaMBass", __VA_ARGS__)
+#endif
 
 typedef uint32_t DWORD;
 typedef int32_t BOOL;
@@ -619,4 +625,10 @@ API BOOL BASS_ChannelSlideAttribute(DWORD handle, DWORD attrib, float value, DWO
   pthread_mutex_unlock(&g_lock);
   g_error = s ? BASS_OK : BASS_ERROR_HANDLE;
   return s != NULL;
+}
+
+// Referenced by bass.pas helpers only; Mach-O (iOS port) needs every imported symbol to exist at link time
+API BOOL BASS_SetEAXParameters(int env, float vol, float decay, float damp) {
+  (void)env; (void)vol; (void)decay; (void)damp;
+  return 0;
 }

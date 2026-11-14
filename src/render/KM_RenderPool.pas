@@ -248,7 +248,7 @@ begin
 
   glScalef(fViewport.Zoom*CELL_SIZE_PX, fViewport.Zoom*CELL_SIZE_PX, 1 / 256);
 
-  glTranslatef(-viewportPosRound.X + gGame.ActiveInterface.ToolbarWidth/CELL_SIZE_PX/fViewport.Zoom, -viewportPosRound.Y, 0);
+  glTranslatef(-viewportPosRound.X + fViewport.ViewRect.Left/CELL_SIZE_PX/fViewport.Zoom, -viewportPosRound.Y, 0);
 
   if RENDER_3D then
   begin
@@ -271,8 +271,8 @@ end;
 
 procedure TKMRenderPool.SetDefaultRenderParams;
 begin
-  glLineWidth(fViewport.Zoom * 2);
-  glPointSize(fViewport.Zoom * 5);
+  glLineWidth(fViewport.Zoom * 2 * gRender.UIScale);
+  glPointSize(fViewport.Zoom * 5 * gRender.UIScale);
   glEnable(GL_LINE_SMOOTH);
 end;
 
@@ -1394,8 +1394,9 @@ begin
   TKMRender.BindTexture(0); // We have to reset texture to default (0), because it could be bind to any other texture (atlas)
 
   //Change LineWidth
+  // shortcut: RenderAux debug lines keep 1 physical px on touch hosts, scale them too if they show in normal play
   if aLineWidth > 0 then
-    glLineWidth(aLineWidth);
+    glLineWidth(aLineWidth * gRender.UIScale);
 
   gRenderAux.RenderWireTile(P, aCol, aInset);
 

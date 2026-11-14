@@ -278,6 +278,7 @@ uses
   KM_ResPalettes in 'src\res\KM_ResPalettes.pas',
   KM_ResSound in 'src\res\KM_ResSound.pas',
   KM_ResSprites in 'src\res\KM_ResSprites.pas',
+  KM_ResTheme in 'src\res\KM_ResTheme.pas',
   KM_ResTexts in 'src\res\KM_ResTexts.pas',
   KM_ResTileset in 'src\res\KM_ResTileset.pas',
   KM_ResUnits in 'src\res\KM_ResUnits.pas',

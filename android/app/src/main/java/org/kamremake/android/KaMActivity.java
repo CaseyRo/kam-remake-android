@@ -6,7 +6,6 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -17,16 +16,11 @@ import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.io.File;
 
 public class KaMActivity extends Activity {
-    private static final String PREFS = "kam";
-    private static final String PREF_UI_SCALE = "ui_scale";
-
     private KaMView view;
     private FrameLayout root;
     private TextView overlay;
@@ -64,15 +58,13 @@ public class KaMActivity extends Activity {
             return;
         }
 
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        // Optional launch parameter (adb shell am start ... --ef ui_scale 1.5), same as the settings slider
-        float extraScale = getIntent().getFloatExtra(PREF_UI_SCALE, -1);
-        if (extraScale >= 0.5f && extraScale <= 2.0f) prefs.edit().putFloat(PREF_UI_SCALE, extraScale).apply();
-        float uiScale = prefs.getFloat(PREF_UI_SCALE, 1.0f);
-        view = new KaMView(this, dataDir, uiScale);
-        // Track the soft keyboard height to keep text fields visible above it
+        view = new KaMView(this, dataDir);
+        // Track the soft keyboard height to keep text fields visible above it. The game stays clear of a camera
+        // cutout: the root is padded by it, so the cutout side gets a black bar instead of covering the sidebar
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             view.setImeHeight(insets.getInsets(WindowInsets.Type.ime()).bottom);
+            android.graphics.Insets cut = insets.getInsets(WindowInsets.Type.displayCutout());
+            v.setPadding(cut.left, cut.top, cut.right, cut.bottom);
             return insets;
         });
         root.addView(view, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
@@ -261,46 +253,5 @@ public class KaMActivity extends Activity {
         } else {
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
-    }
-
-    /** Android-only settings (three finger tap): interface scale */
-    void showPortSettings() {
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        float current = prefs.getFloat(PREF_UI_SCALE, 1.0f);
-
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(48, 24, 48, 24);
-        TextView label = new TextView(this);
-        SeekBar bar = new SeekBar(this);
-        // 0.5 .. 2.0 in 0.05 steps. Above 1.0 only the in-game interface grows, menus keep their design size
-        bar.setMax(30);
-        bar.setProgress(Math.round((current - 0.5f) / 0.05f));
-        label.setText(String.format("Interface scale: %.2f", current));
-        bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar s, int p, boolean user) {
-                label.setText(String.format("Interface scale: %.2f", 0.5f + p * 0.05f));
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar s) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar s) {}
-        });
-        box.addView(label);
-        box.addView(bar);
-
-        new AlertDialog.Builder(this)
-                .setTitle("KaM Remake for Android")
-                .setView(box)
-                .setPositiveButton(android.R.string.ok, (d, w) -> {
-                    float scale = 0.5f + bar.getProgress() * 0.05f;
-                    prefs.edit().putFloat(PREF_UI_SCALE, scale).apply();
-                    if (view != null) view.setUiScale(scale);
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
     }
 }

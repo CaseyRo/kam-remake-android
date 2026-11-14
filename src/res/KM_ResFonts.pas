@@ -103,7 +103,8 @@ type
 
     procedure LoadFont(const aFileName: string; aPalette: TKMPaletteSpec);
     procedure LoadFontX(const aFileName: string; aLoadLevel: TKMFontLoadLevel = fllFull);
-    procedure GenerateTextures(aTexMode: TKMTexFormat);
+    procedure GenerateTextures(aTexMode: TKMTexFormat; aFilter: TKMFilterType = ftNearest);
+    procedure ReleaseTextures;
     procedure Compact;
     procedure ExportAtlasBmp(aBitmap: TBitmap; aIndex: Integer; aShowCells: Boolean); overload;
     procedure ExportAtlasBmp(const aPath: string; aIndex: Integer); overload;
@@ -137,8 +138,10 @@ type
   TKMResFonts = class
   private
     fLoadLevel: TKMFontLoadLevel;
+    fScaleSet: Byte; // FONT_SCALE_SET index the fonts were loaded for
     fFontData: array [TKMFont] of TKMFontSpec;
     function GetFontData(aIndex: TKMFont): TKMFontSpec;
+    class function FontPath(aFont: TKMFont; aScaleSet: Byte; out aHiRes: Boolean): string;
   public
     constructor Create;
     destructor Destroy; override;
@@ -148,6 +151,7 @@ type
     class function GuessPalette(const aFileName: string): TKMPal;
 
     procedure LoadFonts(aLoadLevel: TKMFontLoadLevel = fllFull);
+    function ReloadForUIScale: Boolean;
     procedure ExportFonts;
   end;
 
@@ -164,6 +168,7 @@ uses
   {$IFNDEF NO_OGL}
   KM_Render,
   {$ENDIF}
+  {$IFDEF ANDROID} KMAndroidHost, {$ENDIF}
   KM_CommonUtils, KM_Log;
 
 const
@@ -177,6 +182,42 @@ const
     (Pal: pal0;  TexMode: tfRGBA8 ),
     (Pal: pal0;  TexMode: tfRGBA8 )
   );
+
+  // A mod's fonts: <ExeDir>/Modding graphics/fonts<set>/<name>.fntx, next to its sprite overrides, so the mod installs
+  // (and the iPad import carries it) with that one folder and uninstalls by deleting it. A slot the mod does not ship
+  // loads data/gfx/fonts as before
+  MOD_FONTS_FOLDER = 'Modding graphics' + PathDelim + 'fonts';
+  // Touch hosts: denser font sets for a large UI scale, so text is not a magnified 1x bitmap. Their files keep 1x
+  // metrics (Width, Height, YOffset and spacings in UI units) and only their atlas texels are denser, so text layout and
+  // KM_RenderUI.WriteText need no divisor: a glyph quad stays its UI size and samples the hi-res texels
+  FONT_SCALE_SET: array [0..2] of string = ('', '@1.5x', '@2x');
+
+
+// The set for the current UI scale (buffer px per UI unit): the largest at or below it, with @1.5x from 1.4 (slightly
+// minified there). iPad (2.0 to 3.3) stays on @1.5x for GPU memory: with every CJK atlas loaded (fllFull) @2x takes
+// about 470 MB, @1.5x 275 MB, @1x 110 MB (fllMinimal loads atlas 0 only, about 10 MB). @2x is for 3.5 and more
+// (5K/6K Mac displays at a large interface size). Env KAM_FONT_SET=0|1|2 forces a set, so the Mac test window
+// (density 1, never past 1.4) can render the @1.5x/@2x linear path the iPad uses
+function WantedScaleSet: Byte;
+{$IFDEF ANDROID}
+var
+  forced: string;
+{$ENDIF}
+begin
+  Result := 0;
+  {$IFDEF ANDROID}
+  forced := GetEnvironmentVariable('KAM_FONT_SET');
+  if (forced = '0') or (forced = '1') or (forced = '2') then
+    Exit(Ord(forced[1]) - Ord('0'));
+
+  if gHostUIScale >= 3.5 then
+    Result := 2
+  else
+  if gHostUIScale >= 1.4 then
+    Result := 1;
+  {$ENDIF}
+end;
+
 
 function NameToFont(const aName: string): TKMFont;
 var
@@ -363,7 +404,7 @@ end;
 
 
 // Generate color texture from prepared data
-procedure TKMFontSpec.GenerateTextures(aTexMode: TKMTexFormat);
+procedure TKMFontSpec.GenerateTextures(aTexMode: TKMTexFormat; aFilter: TKMFilterType = ftNearest);
 {$IFNDEF NO_OGL}
 var
   I: Integer;
@@ -378,7 +419,7 @@ begin
     if fAtlases[I].TexID = 0 then //Don't load atlases twice if switching from minimal to full
       if Length(fAtlases[I].TexData) <> 0 then
       begin
-        fAtlases[I].TexID := TKMRender.GenTexture(fTexSizeX, fTexSizeY, @fAtlases[I].TexData[0], aTexMode, ftNearest, ftNearest);
+        fAtlases[I].TexID := TKMRender.GenTexture(fTexSizeX, fTexSizeY, @fAtlases[I].TexData[0], aTexMode, aFilter, aFilter);
         Inc(textureRAM, fTexSizeX * fTexSizeY * TEX_FORMAT_SIZE[aTexMode]);
       end
       else
@@ -386,6 +427,24 @@ begin
 
   if DBG_LOG_FONTS_RAM_USAGE then
     gLog.AddNoTime('Font RAM usage: ' + IntToStr(textureRAM));
+  {$ENDIF}
+end;
+
+
+// Frees the atlases' GL textures, before loading a font set with other atlases
+procedure TKMFontSpec.ReleaseTextures;
+{$IFNDEF NO_OGL}
+var
+  I: Integer;
+{$ENDIF}
+begin
+  {$IFNDEF NO_OGL}
+  for I := 0 to High(fAtlases) do
+    if fAtlases[I].TexID <> 0 then
+    begin
+      TKMRender.DeleteTexture(fAtlases[I].TexID);
+      fAtlases[I].TexID := 0;
+    end;
   {$ENDIF}
 end;
 
@@ -548,26 +607,72 @@ begin
 end;
 
 
+// The file a font loads from: the mod's set for aScaleSet (or the densest one below it), else the mod's 1x font,
+// else the game's.
+// aHiRes tells a denser set (drawn with linear filtering)
+class function TKMResFonts.FontPath(aFont: TKMFont; aScaleSet: Byte; out aHiRes: Boolean): string;
+var
+  fileName: string;
+  I: Integer;
+begin
+  fileName := PathDelim + FontTypeName[aFont] + '.' + TKMFontSpec.DEFAULT_EXT;
+  // A missing set falls back to the next denser one below it (@2x is not shipped by default, see the mod's README)
+  aHiRes := True;
+  for I := aScaleSet downto 1 do
+  begin
+    Result := ExeDir + MOD_FONTS_FOLDER + FONT_SCALE_SET[I] + fileName;
+    if FileExists(Result) then Exit;
+  end;
+  aHiRes := False;
+
+  Result := ExeDir + MOD_FONTS_FOLDER + fileName;
+  if not FileExists(Result) then
+    Result := ExeDir + TKMFontSpec.FONTS_FOLDER + FontTypeName[aFont] + '.' + TKMFontSpec.DEFAULT_EXT;
+end;
+
+
 procedure TKMResFonts.LoadFonts(aLoadLevel: TKMFontLoadLevel = fllFull);
+const
+  TEX_FILTER: array [Boolean] of TKMFilterType = (ftNearest, ftLinear);
 var
   F: TKMFont;
   fntPath: string;
+  scaleSet: Byte;
+  hiRes: Boolean;
   startTime, totalTime: Cardinal;
 begin
   gLog.AddTime('Load font started');
   fLoadLevel := aLoadLevel;
   startTime := TimeGet;
+  scaleSet := WantedScaleSet;
 
   for F := Low(TKMFont) to High(TKMFont) do
   begin
-    fntPath := ExeDir + TKMFontSpec.FONTS_FOLDER + FontTypeName[F] + '.' + TKMFontSpec.DEFAULT_EXT;
+    // Another set has other atlases. Same set: going from minimal to full keeps atlas 0
+    if scaleSet <> fScaleSet then
+      fFontData[F].ReleaseTextures;
+    fntPath := FontPath(F, scaleSet, hiRes);
     fFontData[F].LoadFontX(fntPath, aLoadLevel);
-    fFontData[F].GenerateTextures(FONT_INFO[F].TexMode);
+    // A denser set is scaled by a fraction (e.g. 1.5x texels at 2.67 buffer px per UI unit): linear keeps strokes even
+    fFontData[F].GenerateTextures(FONT_INFO[F].TexMode, TEX_FILTER[hiRes]);
     fFontData[F].Compact;
+    if (scaleSet > 0) or (Pos(MOD_FONTS_FOLDER, fntPath) > 0) then
+      gLog.AddTime('Font ' + FontTypeName[F] + ': ' + fntPath);
   end;
+  fScaleSet := scaleSet;
 
   totalTime := TimeSince(startTime);
   gLog.AddTime('Font load took ' + IntToStr(totalTime) + 'ms');
+end;
+
+
+// Touch hosts: call once a frame, or whenever the UI scale may have changed, with the GL context current. Reloads the
+// fonts (same load level) when the scale now wants another set, and returns True then. Cheap when nothing changed
+function TKMResFonts.ReloadForUIScale: Boolean;
+begin
+  Result := WantedScaleSet <> fScaleSet;
+  if Result then
+    LoadFonts(fLoadLevel);
 end;
 
 
@@ -575,12 +680,13 @@ procedure TKMResFonts.ExportFonts;
 var
   F: TKMFont;
   fntPath: string;
+  hiRes: Boolean;
   I: Integer;
 begin
   // We need to reload fonts to regenerate TexData
   for F := Low(TKMFont) to High(TKMFont) do
   begin
-    fntPath := ExeDir + TKMFontSpec.FONTS_FOLDER + FontTypeName[F] + '.' + TKMFontSpec.DEFAULT_EXT;
+    fntPath := FontPath(F, fScaleSet, hiRes);
     fFontData[F].LoadFontX(fntPath);
 
     for I := 0 to fFontData[F].AtlasCount - 1 do

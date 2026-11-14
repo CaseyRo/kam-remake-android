@@ -503,6 +503,7 @@
         <DCCReference Include="src\res\KM_ResPalettes.pas"/>
         <DCCReference Include="src\res\KM_ResSound.pas"/>
         <DCCReference Include="src\res\KM_ResSprites.pas"/>
+        <DCCReference Include="src\res\KM_ResTheme.pas"/>
         <DCCReference Include="src\res\KM_ResTexts.pas"/>
         <DCCReference Include="src\res\KM_ResTypes.pas"/>
         <DCCReference Include="src\res\KM_ResTileset.pas"/>

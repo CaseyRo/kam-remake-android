@@ -482,7 +482,7 @@ type
   end;
 
 const
-  CLOCK_MONOTONIC = 1;
+  CLOCK_MONOTONIC = {$IFDEF DARWIN}6{$ELSE}1{$ENDIF};
 
 function clock_gettime(aClockId: Integer; aTimeSpec: Pointer): Integer; cdecl; external 'c' name 'clock_gettime';
 

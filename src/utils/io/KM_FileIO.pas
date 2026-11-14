@@ -549,7 +549,8 @@ begin
   {$ELSE}
     // GetWindowsSpecialDir does not work under old lazarus (1.8.0) / FPC versions, which we use to make linux dedi server
     //Result := GetWindowsSpecialDir(CSIDL_PERSONAL) + PathDelim + 'My Games' + PathDelim + GAME_TITLE + PathDelim
-    Result := GetUserDir + 'My Games' + PathDelim + GAME_TITLE + PathDelim;
+    // iOS port: the app container root is read-only, only Documents (and Library, tmp) can be written
+    Result := GetUserDir + {$IF DEFINED(ANDROID) AND DEFINED(DARWIN)}'Documents' + PathDelim + {$IFEND} 'My Games' + PathDelim + GAME_TITLE + PathDelim;
   {$ENDIF}
     ForceDirectories(Result);
     if not IsDirectoryWriteable(Result) then

@@ -12,26 +12,13 @@ import android.view.inputmethod.InputConnection;
 
 
 /**
- * Fullscreen GL surface the game renders into.
- * The surface buffer has a fixed "virtual" size (the game's screen resolution) that the hardware
- * scaler stretches to the display, so the original UI keeps its proportions and stays readable.
+ * Fullscreen GL surface the game renders into, at the display's native resolution.
+ * The engine scales its UI itself (Options > Interface size, see ApplyUIScale in KM_AndroidExports.pas).
  */
 final class KaMView extends KaMSurfaceView {
-    // Minimal game resolution the original UI is designed for
-    static final int BASE_WIDTH = 1024;
-    static final int BASE_HEIGHT = 720;
-    // Smallest game resolution while playing (sidebar must still fit)
-    // Message, message log and chat panels start at the sidebar edge: 224 + 600 px
-    static final int MIN_GAME_WIDTH = 830;
-    static final int MIN_GAME_HEIGHT = 400; // Sidebar scrolls vertically when it does not fit
-
     private final KaMActivity activity;
     private final String dataDir;
-    private float uiScale;
 
-    private volatile int virtW, virtH;
-    private volatile boolean inGame;
-    private volatile float touchScaleX = 1, touchScaleY = 1;
     private boolean engineStarted;
     private boolean engineFailed;
     private boolean textInputShown;
@@ -39,53 +26,12 @@ final class KaMView extends KaMSurfaceView {
     private int imeHeight;
     private long lastTextInputCheck;
 
-    KaMView(KaMActivity activity, String dataDir, float uiScale) {
+    KaMView(KaMActivity activity, String dataDir) {
         super(activity);
         this.activity = activity;
         this.dataDir = dataDir;
-        this.uiScale = uiScale;
         setFocusable(true);
         setFocusableInTouchMode(true);
-    }
-
-    /**
-     * Game resolution for the given display size. The smaller UI dimension fits the base UI size, scaled by user preference.
-     * Menus are designed for 1024x720 and never get less; in game (map + sidebar) the UI can be made up to 2x larger.
-     */
-    private void computeVirtualSize(int w, int h) {
-        float scale = Math.min((float) h / BASE_HEIGHT, (float) w / BASE_WIDTH) * uiScale;
-        scale = Math.max(scale, 0.25f);
-        int minW = inGame ? MIN_GAME_WIDTH : BASE_WIDTH;
-        int minH = inGame ? MIN_GAME_HEIGHT : BASE_HEIGHT;
-        int vw = Math.max(minW, Math.round(w / scale));
-        int vh = Math.max(minH, Math.round(h / scale));
-        // Keep display aspect ratio
-        float aspect = (float) w / h;
-        if ((float) vw / vh < aspect) vw = Math.round(vh * aspect);
-        else vh = Math.round(vw / aspect);
-        virtW = vw & ~1;
-        virtH = vh & ~1;
-        touchScaleX = (float) virtW / w;
-        touchScaleY = (float) virtH / h;
-    }
-
-    private void applyVirtualSize() {
-        if (getWidth() <= 0) return;
-        computeVirtualSize(getWidth(), getHeight());
-        getHolder().setFixedSize(virtW, virtH);
-    }
-
-    void setUiScale(float scale) {
-        uiScale = scale;
-        applyVirtualSize();
-    }
-
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-        if (w <= 0 || h <= 0) return;
-        computeVirtualSize(w, h);
-        getHolder().setFixedSize(virtW, virtH);
     }
 
     // ---------- Renderer (GL thread) ----------
@@ -93,6 +39,7 @@ final class KaMView extends KaMSurfaceView {
     @Override
     protected void onSurfaceChanged(int width, int height) {
         if (engineFailed) return;
+        KaMNative.setUiDensity(getResources().getDisplayMetrics().density);
         if (!engineStarted) {
             engineStarted = true;
             if (!KaMNative.init(dataDir, width, height)) {
@@ -110,12 +57,6 @@ final class KaMView extends KaMSurfaceView {
     protected void onDrawFrame() {
         if (!engineStarted || engineFailed) return;
         KaMNative.frame();
-
-        boolean ig = KaMNative.inGame();
-        if (ig != inGame) {
-            inGame = ig;
-            activity.runOnUiThread(this::applyVirtualSize);
-        }
 
         long now = SystemClock.uptimeMillis();
         if (now - lastTextInputCheck > 200) {
@@ -148,8 +89,9 @@ final class KaMView extends KaMSurfaceView {
     /** Moves the game picture up while the keyboard covers the focused text field (UI thread) */
     private void updateKeyboardShift() {
         float shift = 0;
-        if (imeHeight > 0 && textInputBottom >= 0 && touchScaleY > 0) {
-            float fieldBottomPx = textInputBottom / touchScaleY + 16 * getResources().getDisplayMetrics().density;
+        if (imeHeight > 0 && textInputBottom >= 0) {
+            // Surface buffer px = view px
+            float fieldBottomPx = textInputBottom + 16 * getResources().getDisplayMetrics().density;
             float visible = getHeight() - imeHeight;
             shift = Math.max(0, fieldBottomPx - visible);
         }
@@ -164,22 +106,16 @@ final class KaMView extends KaMSurfaceView {
 
         final int action = e.getActionMasked();
         final int count = e.getPointerCount();
-        final float x0 = e.getX(0) * touchScaleX, y0 = e.getY(0) * touchScaleY;
-        final float x1 = count > 1 ? e.getX(1) * touchScaleX : x0;
-        final float y1 = count > 1 ? e.getY(1) * touchScaleY : y0;
+        final float x0 = e.getX(0), y0 = e.getY(0);
+        final float x1 = count > 1 ? e.getX(1) : x0;
+        final float y1 = count > 1 ? e.getY(1) : y0;
         int a;
         switch (action) {
             case MotionEvent.ACTION_DOWN: a = 0; break;
             case MotionEvent.ACTION_MOVE: a = 1; break;
             case MotionEvent.ACTION_UP: a = 2; break;
             case MotionEvent.ACTION_CANCEL: a = 3; break;
-            case MotionEvent.ACTION_POINTER_DOWN:
-                if (count == 3) {
-                    activity.runOnUiThread(activity::showPortSettings);
-                    return true;
-                }
-                a = 5;
-                break;
+            case MotionEvent.ACTION_POINTER_DOWN: a = 5; break;
             case MotionEvent.ACTION_POINTER_UP: a = 6; break;
             default: return true;
         }
@@ -191,7 +127,7 @@ final class KaMView extends KaMSurfaceView {
     private int lastMouseButtons;
 
     private boolean handleMouse(MotionEvent e) {
-        final int x = Math.round(e.getX() * touchScaleX), y = Math.round(e.getY() * touchScaleY);
+        final int x = Math.round(e.getX()), y = Math.round(e.getY());
         int buttons = e.getButtonState();
         int changed = buttons ^ lastMouseButtons;
         int[][] map = {{MotionEvent.BUTTON_PRIMARY, 0}, {MotionEvent.BUTTON_SECONDARY, 1}, {MotionEvent.BUTTON_TERTIARY, 2}};
@@ -210,7 +146,7 @@ final class KaMView extends KaMSurfaceView {
     @Override
     public boolean onGenericMotionEvent(MotionEvent e) {
         if (e.isFromSource(InputDevice.SOURCE_CLASS_POINTER)) {
-            final int x = Math.round(e.getX() * touchScaleX), y = Math.round(e.getY() * touchScaleY);
+            final int x = Math.round(e.getX()), y = Math.round(e.getY());
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_HOVER_MOVE:
                     queueEvent(() -> KaMNative.mouse(1, 0, x, y));

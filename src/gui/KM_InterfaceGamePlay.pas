@@ -217,8 +217,12 @@ type
     fSidebarScroll: Integer;
     fSidebarScrollMax: Integer;
     fControlsBaseTop: Integer;
+    Button_Speed: TKMButton; // Game speed for touch devices, where F5..F8 are out of reach
+    Shape_SidebarTrack, Shape_SidebarThumb: TKMShape; // Scroll indicator, shown while the sidebar can scroll
   private
     procedure ApplySidebarScroll;
+    procedure SpeedClick(Sender: TObject);
+    procedure MoveSidebarRight;
   protected
     {$ENDIF}
 
@@ -417,6 +421,11 @@ uses
 const
   PANEL_TRACK_TOP = 285;
   REPLAYBAR_DEFAULT_WIDTH = 400;
+  {$IFDEF ANDROID}
+  // Save/load list rows on touch hosts: in game an 11-inch iPad at the default 150% size has 2.88 buffer
+  // px per unit (1.44 pt per unit), so 32 units is 46 pt; 48 dp on a density 2 Android tablet
+  TOUCH_LIST_ROW = 32;
+  {$ENDIF}
 
   KEY_FUNCS_ALLOWED_ON_PAUSE: TKMKeyFunctionSet = [
     kfMusicPrevTrack, kfMusicNextTrack, kfMusicDisable, kfMusicShuffle, kfMusicVolumeUp, kfMusicVolumeDown,  kfMusicMute,
@@ -868,6 +877,12 @@ begin
   MinimapView.OnClickRight := Minimap_RightClick;
   MinimapView.OnMinimapClick := Minimap_Click; // For placing beacons
 
+  {$IFDEF ANDROID}
+  Button_Speed := TKMButton.Create(Panel_Main, 189, 10, 31, 36, 'x1', bsGame);
+  Button_Speed.Hint := 'Game speed';
+  Button_Speed.OnClick := SpeedClick;
+  {$ENDIF}
+
   Image_Clock := TKMImage.Create(Panel_Main,232,8,67,65,556);
   Image_Clock.Hide;
 
@@ -895,6 +910,18 @@ begin
 { I plan to store all possible layouts on different pages which gets displayed one at a time }
 { ========================================================================================== }
   Create_Controls; // Includes all the child pages
+  {$IFDEF ANDROID}
+  // Touch screens have no hover to reveal a scrollbar: a persistent indicator on the sidebar's right edge
+  // tells there is more below and how far it is scrolled
+  Shape_SidebarTrack := TKMShape.Create(Panel_Main, TOOLBAR_WIDTH - 8, 0, 5, 0);
+  Shape_SidebarTrack.FillColor := $50000000;
+  Shape_SidebarTrack.LineWidth := 0;
+  Shape_SidebarTrack.Hitable := False;
+  Shape_SidebarThumb := TKMShape.Create(Panel_Main, TOOLBAR_WIDTH - 8, 0, 5, 0);
+  Shape_SidebarThumb.FillColor := $E0C8E6F2;
+  Shape_SidebarThumb.LineWidth := 0;
+  Shape_SidebarThumb.Hitable := False;
+  {$ENDIF}
 
   Create_NetWait; // Overlay blocking everyhitng but sidestack and messages
   fGuiGameAllies := TKMGUIGameAllies.Create(Panel_Main); // MessagePage sibling
@@ -945,6 +972,10 @@ begin
 
   SwitchPage(nil); // Update
   Resize(aRender.ScreenX, aRender.ScreenY); // Hide/show swords according to player's resolution when game starts
+  {$IFDEF ANDROID}
+  if gGameSettings.SidebarOnRight then
+    MoveSidebarRight;
+  {$ENDIF}
   // Panel_Main.Width := aScreenX;
   // Panel_Main.Height := aScreenY;
   // UpdatePositions; //Reposition messages stack etc.
@@ -1041,9 +1072,18 @@ begin
   Sidebar_Top.Top := -fSidebarScroll;
   Sidebar_Middle.Top := Sidebar_Top.Height - fSidebarScroll;
   MinimapView.Top := 10 - fSidebarScroll;
+  Button_Speed.Top := 10 - fSidebarScroll;
   Panel_Controls.Top := fControlsBaseTop - fSidebarScroll;
   // Keep full sidebar height, the part below the screen is reached by scrolling
   Panel_Controls.Height := Max(Panel_Main.Height, SIDEBAR_REQUIRED_HEIGHT) - fControlsBaseTop;
+
+  if Shape_SidebarTrack = nil then Exit; // Resize during creation
+  // Thumb shows the visible part of the sidebar within its full height
+  Shape_SidebarTrack.Visible := fSidebarScrollMax > 0;
+  Shape_SidebarThumb.Visible := fSidebarScrollMax > 0;
+  Shape_SidebarTrack.Height := Panel_Main.Height;
+  Shape_SidebarThumb.Top := fSidebarScroll * Panel_Main.Height div SIDEBAR_REQUIRED_HEIGHT;
+  Shape_SidebarThumb.Height := Sqr(Panel_Main.Height) div SIDEBAR_REQUIRED_HEIGHT;
 end;
 
 
@@ -1063,10 +1103,54 @@ begin
 end;
 
 
+// Cycles x1 -> medium -> fast -> very fast (the F5..F8 speeds from the settings) -> x1
+procedure TKMGamePlayInterface.SpeedClick(Sender: TObject);
+var
+  speed: Single;
+begin
+  speed := gGame.SpeedGIP;
+  if speed < gGameSettings.SpeedMedium then
+    speed := gGameSettings.SpeedMedium
+  else if speed < gGameSettings.SpeedFast then
+    speed := gGameSettings.SpeedFast
+  else if speed < gGameSettings.SpeedVeryFast then
+    speed := gGameSettings.SpeedVeryFast
+  else
+    speed := GAME_SPEED_NORMAL;
+  gGame.SetSpeed(speed);
+end;
+
+
+// Puts the sidebar on the right screen edge (gGameSettings.SidebarOnRight). Top-level controls that lie within
+// the toolbar width belong to the sidebar and move with it; controls placed next to the toolbar (messages, clock,
+// chat) move into the space it frees on the left. Full-screen and centred controls stay where they are
+procedure TKMGamePlayInterface.MoveSidebarRight;
+var
+  I: Integer;
+  C: TKMControl;
+begin
+  for I := 0 to Panel_Main.ChildCount - 1 do
+  begin
+    C := Panel_Main.Childs[I];
+    if (C.Left >= 0) and (C.Left + C.Width <= TOOLBAR_WIDTH) then
+    begin
+      C.Left := C.Left + Panel_Main.Width - TOOLBAR_WIDTH;
+      C.Anchors := C.Anchors - [anLeft] + [anRight];
+    end
+    else
+    if (C.Left >= TOOLBAR_WIDTH) and (C.Left + C.Width < Panel_Main.Width) then
+      C.Left := C.Left - TOOLBAR_WIDTH;
+  end;
+
+  fViewport.SidebarOnRight := True;
+  fViewport.Resize(Panel_Main.Width, Panel_Main.Height);
+end;
+
+
 function TKMGamePlayInterface.IsOverScrollableSidebar(X, Y: Integer): Boolean;
 
 begin
-  Result := (fSidebarScrollMax > 0) and (X < TOOLBAR_WIDTH)
+  Result := (fSidebarScrollMax > 0) and (X >= Sidebar_Top.AbsLeft) and (X < Sidebar_Top.AbsLeft + TOOLBAR_WIDTH)
             and not ((X >= MinimapView.AbsLeft) and (X < MinimapView.AbsLeft + MinimapView.Width)
                      and (Y >= MinimapView.AbsTop) and (Y < MinimapView.AbsTop + MinimapView.Height));
 end;
@@ -1497,6 +1581,9 @@ begin
     ListBox_Save.HintBackColor := TKMColor4f.New(87, 72, 37);
     ListBox_Save.SearchEnabled := True;
     ListBox_Save.OnChange := Menu_Save_ListChange;
+    {$IFDEF ANDROID}
+    ListBox_Save.ItemHeight := TOUCH_LIST_ROW;
+    {$ENDIF}
 
     Label_SaveExists := TKMLabel.Create(Panel_Save,0,260,TB_WIDTH,30,gResTexts[TX_GAMEPLAY_SAVE_EXISTS],fntOutline,taLeft);
     CheckBox_SaveExists := TKMCheckBox.Create(Panel_Save,0,280,TB_WIDTH,20,gResTexts[TX_GAMEPLAY_SAVE_OVERWRITE], fntMetal);
@@ -1519,6 +1606,9 @@ begin
     ListBox_Load.SearchEnabled := True;
     ListBox_Load.OnChange := Menu_Load_ListClick;
     ListBox_Load.OnDoubleClick := Menu_Load_Click;
+    {$IFDEF ANDROID}
+    ListBox_Load.ItemHeight := TOUCH_LIST_ROW;
+    {$ENDIF}
 
     Label_LoadDescription := TKMLabel.Create(Panel_Load,0,265,TB_WIDTH,0,'',fntGrey,taLeft);
     Label_LoadDescription.WordWrap := True;
@@ -3124,6 +3214,10 @@ begin
   if (Self = nil) or (gGame = nil) then Exit;
 
   UpdateClock(gGame.SpeedActual, gGame.GetNormalSpeed, gGame.SpeedGIP);
+  {$IFDEF ANDROID}
+  Button_Speed.Caption := 'x' + FormatFloat('##0.#', gGame.SpeedGIP);
+  Button_Speed.Visible := gGame.IsSpeedUpAllowed and not gGameParams.IsReplay;
+  {$ENDIF}
   UpdateOverlayControls;
 end;
 

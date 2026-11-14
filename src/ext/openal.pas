@@ -71,9 +71,14 @@ const
   callibname='OpenAL32.dll';
   calutlibname='Alut.dll';
 {$ENDIF}
+{$IFDEF DARWIN}
+  callibname='@rpath/openal.framework/openal'; // iOS port: OpenAL Soft in the app bundle (ios/make_frameworks.sh)
+  calutlibname='libalut.dylib';
+{$ELSE}
 {$IF DEFINED(Linux) OR DEFINED(ANDROID)}
   callibname='libopenal.so';
   calutlibname='libalut.so';
+{$ENDIF}
 {$ENDIF}
 
 
@@ -1943,7 +1948,7 @@ const
   RTLD_LAZY         = $001;
   RTLD_NOW          = $002;
   RTLD_BINDING_MASK = $003;
-  LibraryLib        = {$IF DEFINED(Linux) OR DEFINED(ANDROID)}'dl'{$ELSE}'c'{$IFEND};
+  LibraryLib        = {$IF (DEFINED(Linux) OR DEFINED(ANDROID)) AND NOT DEFINED(DARWIN)}'dl'{$ELSE}'c'{$IFEND};
 
 function LoadLibraryEx(Name : PChar; Flags : LongInt) : Pointer; cdecl; external LibraryLib name 'dlopen';
 function GetProcAddressEx(Lib : Pointer; Name : PChar) : Pointer; cdecl; external LibraryLib name 'dlsym';

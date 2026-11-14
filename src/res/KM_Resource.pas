@@ -86,7 +86,7 @@ uses
   KM_System,
   {$ENDIF}
   KromUtils, KM_Log, KM_Points,
-  KM_ResTexts, KM_ResKeyFuncs, KM_ResTilesetTypes;
+  KM_ResTexts, KM_ResKeyFuncs, KM_ResTilesetTypes, KM_ResTheme;
 
 
 { TKMResource }
@@ -167,6 +167,7 @@ begin
 
   fUnits := TKMResUnits.Create; // Load units prior to Sprites, as we could use it on SoftenShadows override for png in Sprites folder
   fSprites.LoadMenuResources;
+  LoadUITheme(ExeDir + 'Modding graphics' + PathDelim + 'theme.ini'); // Optional mod UI colours, next to the sprite overrides
 
   {$IFNDEF NO_OGL}
   gSystem.MakeCursors(fSprites[rxGui]);

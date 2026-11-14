@@ -58,6 +58,7 @@ type
     function IsGame: Boolean;
   protected
     Panel_Options: TKMPanel;
+    Panel_Content: TKMPanel; // Holds the sections: Panel_Options, or a scroll panel inside it on touch hosts
       Panel_GFX: TKMPanel;
         Bevel_Options_GFX: TKMBevel;
         CheckBox_LerpRender: TKMCheckBox;
@@ -93,6 +94,7 @@ type
         CheckBox_ReplayShowBeacons: TKMCheckBox;
       Panel_Mods: TKMPanel;
         CheckBox_SnowHouses: TKMCheckBox;
+        CheckBox_SidebarOnRight: TKMCheckBox;
       Panel_Sound: TKMPanel;
         Label_MusicOff: TKMLabel;
         TrackBar_SFX, TrackBar_Music: TKMTrackBar;
@@ -126,13 +128,27 @@ type
 implementation
 uses
   KM_Main, KM_Music, KM_Sound, KM_RenderUI, KM_Resource, KM_ResTexts, KM_ResLocales, KM_ResFonts, KM_ResSound, KM_Video,
-  KM_ResTypes,
+  KM_ResTypes, KM_ResTheme,
   KM_Game, KM_GameSettings, KM_GameParams, KM_GameTypes,
+  {$IFDEF ANDROID} KMAndroidHost, KM_ControlsScroll, {$ENDIF}
   KM_GameAppSettings;
 
 const
   SCROLL_SPEED_MULTIPLIER = 2.5;
+  // Interface sizes a touch host offers (gMainSettings.UIScale, see ApplyUIScale in KM_AndroidExports)
+  UI_SCALES: array [0..6] of Single = (0.5, 0.75, 1, 1.25, 1.5, 1.75, 2);
   BLOCK_SPAN = 18;
+  {$IFDEF ANDROID}
+  // Pitch and hit height of check box, radio and drop list rows. 38 UI units = 44 pt on an 11-inch iPad at the
+  // default 150% size (the menu is capped at 720 units tall: 2.32 buffer px per unit, 2 px per pt). Such rows do
+  // not fit one screen, so on touch hosts the sections scroll above a pinned Back button
+  ROW_H = 38;
+  // Sections keep their place in the scroll panel when it changes height (no vertical centering)
+  BLOCK_ANCHORS = [anLeft, anTop];
+  {$ELSE}
+  ROW_H = 20;
+  BLOCK_ANCHORS = [anLeft];
+  {$ENDIF}
 
 
 { TKMGUICommonOptions }
@@ -149,7 +165,7 @@ begin
 
   case fOptionsKind of
     guiOptMenu: begin
-                  wid := 880;
+                  wid := 880 {$IFDEF ANDROID} + 20 {$ENDIF}; // Touch: the scroll bar goes right of column 3
                   bottomLine := 30 + gResLocales.Count*20 + 10;
                   panelTop := (aParent.Height - 620) div 2 - 20;
                   backStr := gResTexts[TX_MENU_BACK];
@@ -170,12 +186,20 @@ begin
   Panel_Options := TKMPanel.Create(aParent,(aParent.Width - wid) div 2, panelTop, wid, aParent.Height - panelTop);
   Panel_Options.AnchorsStretch;
 
-  if IsMenu then
+  if IsMenu and gUITheme.OptionsBanner then
     with TKMImage.Create(Panel_Options, 705 - Panel_Options.Left, 220 - Panel_Options.Top, Round(207*1.3), Round(295*1.3),6,rxGuiMain) do
     begin
       ImageStretch;
       Anchors := [anLeft];
     end;
+
+  {$IFDEF ANDROID}
+  // Drag, the wheel or the scroll bar scroll it (drag: ScrollableSidebarAt in KM_AndroidExports)
+  Panel_Content := TKMScrollPanel.Create(Panel_Options, 0, 0, wid, Panel_Options.Height - ROW_H - 18, [saVertical], bsMenu, ssCommon);
+  Panel_Content.Anchors := [anLeft, anTop, anBottom];
+  {$ELSE}
+  Panel_Content := Panel_Options;
+  {$ENDIF}
 
     case fOptionsKind of
       guiOptMenu: begin
@@ -227,6 +251,12 @@ begin
     Button_OptionsBack := TKMButton.Create(Panel_Options, 0, bottomLine, 280, 30, backStr, bsMenu);
     Button_OptionsBack.Anchors := [anLeft];
     Button_OptionsBack.OnClick := BackClick;
+    {$IFDEF ANDROID}
+    // Pinned below the scrolling sections
+    Button_OptionsBack.Top := Panel_Options.Height - ROW_H - 10;
+    Button_OptionsBack.Height := ROW_H;
+    Button_OptionsBack.Anchors := [anLeft, anBottom];
+    {$ENDIF}
 
     // Panel_Options_Keys
     // Last, to be above all other panels
@@ -257,20 +287,28 @@ end;
 
 
 procedure TKMGUICommonOptions.CreateRes(var aTopBlock: Integer; var aLeftBlock: Integer);
+var
+  header: TKMLabel;
+  bevel: TKMBevel;
+  top: Integer;
 begin
   if not IsMenu then Exit;
 
   // Resolutions section
-  Panel_Res := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 175);
-  NextBlock(aTopBlock, Panel_Res);
-  Panel_Res.Anchors := [anLeft];
-    TKMLabel.Create(Panel_Res, 6, 0, 270, 20, gResTexts[TX_MENU_OPTIONS_RESOLUTION], fntOutline, taLeft);
-    TKMBevel.Create(Panel_Res, 0, 20, 280, Panel_Res.Height - 20);
+  Panel_Res := TKMPanel.Create(Panel_Content, aLeftBlock, aTopBlock, 280, 175);
+  Panel_Res.Anchors := BLOCK_ANCHORS;
+    header := TKMLabel.Create(Panel_Res, 6, 0, 270, 20, gResTexts[TX_MENU_OPTIONS_RESOLUTION], fntOutline, taLeft);
+    bevel := TKMBevel.Create(Panel_Res, 0, 20, 280, Panel_Res.Height - 20);
 
-    CheckBox_FullScreen := TKMCheckBox.Create(Panel_Res, 10, 30, 260, 20, gResTexts[TX_MENU_OPTIONS_FULLSCREEN], fntMetal);
+    CheckBox_FullScreen := TKMCheckBox.Create(Panel_Res, 10, 30, 260, ROW_H, gResTexts[TX_MENU_OPTIONS_FULLSCREEN], fntMetal);
     CheckBox_FullScreen.OnClick := ChangeResolution;
 
-    DropBox_Resolution := TKMDropList.Create(Panel_Res, 10, 50, 260, 20, fntMetal, '', bsMenu);
+    top := 50;
+    {$IFDEF ANDROID}
+    // Only a Mac host (gHostSetDisplay) has a window mode, elsewhere the list moves up into its row
+    top := 30 + ROW_H * Ord(Assigned(gHostSetDisplay));
+    {$ENDIF}
+    DropBox_Resolution := TKMDropList.Create(Panel_Res, 10, top, 260, ROW_H, fntMetal, '', bsMenu);
     DropBox_Resolution.OnChange := ChangeResolution;
 
     DropBox_RefreshRate := TKMDropList.Create(Panel_Res, 10, 85, 260, 20, fntMetal, '', bsMenu);
@@ -278,6 +316,21 @@ begin
 
     Button_ResApply := TKMButton.Create(Panel_Res, 10, 125, 260, 30, gResTexts[TX_MENU_OPTIONS_APPLY], bsMenu);
     Button_ResApply.OnClick := ApplyResolution;
+
+  {$IFDEF ANDROID}
+  // Touch hosts render at the screen's native size: the list picks the interface size. Only a Mac host
+  // (gHostSetDisplay) has a window mode; refresh rates do not apply
+  // shortcut: hardcoded English header, until there is a libx text for it
+  header.Caption := 'Interface size';
+  CheckBox_FullScreen.Visible := Assigned(gHostSetDisplay);
+  DropBox_RefreshRate.Hide;
+  DropBox_Resolution.List.ItemHeight := ROW_H;
+  Button_ResApply.Top := top + ROW_H + 10;
+  Button_ResApply.Height := ROW_H;
+  Panel_Res.Height := Button_ResApply.Bottom + 10;
+  bevel.Height := Panel_Res.Height - 20;
+  {$ENDIF}
+  NextBlock(aTopBlock, Panel_Res);
 end;
 
 
@@ -286,29 +339,29 @@ var
   top: Integer;
 begin
   // Graphics section
-  Panel_GFX := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 165);
-  Panel_GFX.Anchors := [anLeft];
+  Panel_GFX := TKMPanel.Create(Panel_Content, aLeftBlock, aTopBlock, 280, 165);
+  Panel_GFX.Anchors := BLOCK_ANCHORS;
     TKMLabel.Create(Panel_GFX,6,0,270,20,gResTexts[TX_MENU_OPTIONS_GRAPHICS],fntOutline,taLeft);
     Bevel_Options_GFX := TKMBevel.Create(Panel_GFX,0,20,280,145);
 
-    CheckBox_LerpRender := TKMCheckBox.Create(Panel_GFX, 10, 30, 260, 20, gResTexts[TX_MENU_OPTIONS_LERP_RENDER], fntMetal);
+    CheckBox_LerpRender := TKMCheckBox.Create(Panel_GFX, 10, 30, 260, ROW_H, gResTexts[TX_MENU_OPTIONS_LERP_RENDER], fntMetal);
     CheckBox_LerpRender.Hint := gResTexts[TX_SETTINGS_LERP_RENDER_HINT];
     CheckBox_LerpRender.OnClick := Change;
 
-    CheckBox_LerpAnims := TKMCheckBox.Create(Panel_GFX, 10, 50, 260, 20, gResTexts[TX_MENU_OPTIONS_LERP_ANIMS], fntMetal);
+    CheckBox_LerpAnims := TKMCheckBox.Create(Panel_GFX, 10, 30 + ROW_H, 260, ROW_H, gResTexts[TX_MENU_OPTIONS_LERP_ANIMS], fntMetal);
     CheckBox_LerpAnims.Hint := gResTexts[TX_SETTINGS_LERP_ANIMS_HINT];
     CheckBox_LerpAnims.OnClick := Change;
 
-    top := 70;
+    top := 30 + 2*ROW_H;
 
     if IsMenu then
     begin
-      CheckBox_VSync := TKMCheckBox.Create(Panel_GFX, 10, 70, 260, 20, gResTexts[TX_MENU_OPTIONS_VSYNC], fntMetal);
+      CheckBox_VSync := TKMCheckBox.Create(Panel_GFX, 10, top, 260, ROW_H, gResTexts[TX_MENU_OPTIONS_VSYNC], fntMetal);
       CheckBox_VSync.OnClick := Change;
 
-      CheckBox_ShadowQuality := TKMCheckBox.Create(Panel_GFX, 10, 90, 260, 20, gResTexts[TX_MENU_OPTIONS_SHADOW_QUALITY], fntMetal);
+      CheckBox_ShadowQuality := TKMCheckBox.Create(Panel_GFX, 10, top + ROW_H, 260, ROW_H, gResTexts[TX_MENU_OPTIONS_SHADOW_QUALITY], fntMetal);
       CheckBox_ShadowQuality.OnClick := Change;
-      Inc(top, 40);
+      Inc(top, 2*ROW_H);
     end;
 
     TrackBar_Brightness := TKMTrackBar.Create(Panel_GFX, 10, top, 256, OPT_SLIDER_MIN,OPT_SLIDER_MAX);
@@ -325,22 +378,22 @@ procedure TKMGUICommonOptions.CreateVideos(var aTopBlock: Integer; var aLeftBloc
 var
   top: Integer;
 begin
-  top := 10;
+  top := 30 - ROW_H; // First row at 30
   // Videos
-  Panel_Video := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 195);
-  Panel_Video.Anchors := [anLeft];
+  Panel_Video := TKMPanel.Create(Panel_Content, aLeftBlock, aTopBlock, 280, 195);
+  Panel_Video.Anchors := BLOCK_ANCHORS;
     TKMLabel.Create(Panel_Video,6,0,270,20,gResTexts[TX_MENU_OPTIONS_VIDEOS],fntOutline,taLeft);
     Bevel_Video := TKMBevel.Create(Panel_Video,0,20,280,Panel_Video.Height - 20);
-    CheckBox_VideoEnable := TKMCheckBox.Create(Panel_Video, 10, NextTop(top), 260, 20, gResTexts[TX_MENU_OPTIONS_VIDEOS_ENABLE], fntMetal);
+    CheckBox_VideoEnable := TKMCheckBox.Create(Panel_Video, 10, NextTop(top, ROW_H), 260, ROW_H, gResTexts[TX_MENU_OPTIONS_VIDEOS_ENABLE], fntMetal);
     CheckBox_VideoEnable.OnClick := Change;
-    CheckBox_VideoStretch := TKMCheckBox.Create(Panel_Video, 10, NextTop(top), 260, 20, gResTexts[TX_MENU_OPTIONS_VIDEOS_STRETCH], fntMetal);
+    CheckBox_VideoStretch := TKMCheckBox.Create(Panel_Video, 10, NextTop(top, ROW_H), 260, ROW_H, gResTexts[TX_MENU_OPTIONS_VIDEOS_STRETCH], fntMetal);
     CheckBox_VideoStretch.OnClick := Change;
-    CheckBox_VideoStartup := TKMCheckBox.Create(Panel_Video, 10, NextTop(top), 260, 20, gResTexts[TX_MENU_OPTIONS_VIDEOS_STARTUP], fntMetal);
+    CheckBox_VideoStartup := TKMCheckBox.Create(Panel_Video, 10, NextTop(top, ROW_H), 260, ROW_H, gResTexts[TX_MENU_OPTIONS_VIDEOS_STARTUP], fntMetal);
     CheckBox_VideoStartup.OnClick := Change;
 
     if IsMenu then
     begin
-      TrackBar_VideoVolume := TKMTrackBar.Create(Panel_Video, 10, NextTop(top), 256, OPT_SLIDER_MIN, OPT_SLIDER_MAX);
+      TrackBar_VideoVolume := TKMTrackBar.Create(Panel_Video, 10, NextTop(top, ROW_H), 256, OPT_SLIDER_MIN, OPT_SLIDER_MAX);
       TrackBar_VideoVolume.Caption := gResTexts[TX_MENU_OPTIONS_VIDEOS_VOLUME];
       TrackBar_VideoVolume.OnChange := Change;
 
@@ -366,16 +419,16 @@ end;
 procedure TKMGUICommonOptions.CreateSound(var aTopBlock: Integer; var aLeftBlock: Integer);
 begin
   // SFX section
-  Panel_Sound := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 175);
+  Panel_Sound := TKMPanel.Create(Panel_Content, aLeftBlock, aTopBlock, 280, 135 + 2*ROW_H);
   NextBlock(aTopBlock, Panel_Sound);
-  Panel_Sound.Anchors := [anLeft];
+  Panel_Sound.Anchors := BLOCK_ANCHORS;
     TKMLabel.Create(Panel_Sound,6,0,270,20,gResTexts[TX_MENU_OPTIONS_SOUND],fntOutline,taLeft);
     TKMBevel.Create(Panel_Sound,0,20,280,Panel_Sound.Height - 20);
 
     TrackBar_SFX       := TKMTrackBar.Create(Panel_Sound, 10, 27, 256, OPT_SLIDER_MIN, OPT_SLIDER_MAX);
     TrackBar_Music     := TKMTrackBar.Create(Panel_Sound, 10, 77, 256, OPT_SLIDER_MIN, OPT_SLIDER_MAX);
-    CheckBox_MusicOff  := TKMCheckBox.Create(Panel_Sound, 10, 127, 256, 20, gResTexts[TX_MENU_OPTIONS_MUSIC_DISABLE], fntMetal);
-    CheckBox_ShuffleOn := TKMCheckBox.Create(Panel_Sound, 10, 147, 256, 20, gResTexts[TX_MENU_OPTIONS_MUSIC_SHUFFLE], fntMetal);
+    CheckBox_MusicOff  := TKMCheckBox.Create(Panel_Sound, 10, 127, 256, ROW_H, gResTexts[TX_MENU_OPTIONS_MUSIC_DISABLE], fntMetal);
+    CheckBox_ShuffleOn := TKMCheckBox.Create(Panel_Sound, 10, 127 + ROW_H, 256, ROW_H, gResTexts[TX_MENU_OPTIONS_MUSIC_SHUFFLE], fntMetal);
     TrackBar_SFX.Caption   := gResTexts[TX_MENU_SFX_VOLUME];
     TrackBar_Music.Caption := gResTexts[TX_MENU_MUSIC_VOLUME];
     TrackBar_SFX.OnChange      := Change;
@@ -388,9 +441,9 @@ end;
 procedure TKMGUICommonOptions.CreateControls(var aTopBlock: Integer; var aLeftBlock: Integer);
 begin
   // Controls section
-  Panel_Ctrl := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 120);
+  Panel_Ctrl := TKMPanel.Create(Panel_Content, aLeftBlock, aTopBlock, 280, 120);
   NextBlock(aTopBlock, Panel_Ctrl, 5);
-  Panel_Ctrl.Anchors := [anLeft];
+  Panel_Ctrl.Anchors := BLOCK_ANCHORS;
     TKMLabel.Create(Panel_Ctrl,6,0,270,20,gResTexts[TX_MENU_OPTIONS_CONTROLS],fntOutline,taLeft);
     TKMBevel.Create(Panel_Ctrl,0,20,280,Panel_Ctrl.Height - 20);
 
@@ -424,29 +477,29 @@ begin
   if IsMenu then
     Inc(aTopBlock, 40 - 20*(linesSavePT + linesAutosavePTEnd + linesSaveWareDistribution - 2));
 
-  Panel_Game := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 50 + 20*(linesSavePT + linesAutosavePTEnd));
+  Panel_Game := TKMPanel.Create(Panel_Content, aLeftBlock, aTopBlock, 280, 50 + 20*(linesSavePT + linesAutosavePTEnd));
 
-  Panel_Game.Anchors := [anLeft];
+  Panel_Game.Anchors := BLOCK_ANCHORS;
 
     TKMLabel.Create(Panel_Game,6,0,270,20,gResTexts[TX_MENU_OPTIONS_GAMEPLAY],fntOutline,taLeft);
     Bevel_Game := TKMBevel.Create(Panel_Game,0,20,280,Panel_Game.Height - 20);
 
-    top := 7;
+    top := 27 - ROW_H; // First row at 27
     // Menu, Game
     if IsMenu or gGameParams.IsGame then
     begin
-      CheckBox_Autosave := TKMCheckBox.Create(Panel_Game,10,NextTop(top),256,20,gResTexts[TX_MENU_OPTIONS_AUTOSAVE], fntMetal);
+      CheckBox_Autosave := TKMCheckBox.Create(Panel_Game,10,NextTop(top, ROW_H),256,ROW_H,gResTexts[TX_MENU_OPTIONS_AUTOSAVE], fntMetal);
       CheckBox_Autosave.OnClick := Change;
 
-      CheckBoxs_AutosaveAtGameEnd := TKMCheckBox.Create(Panel_Game,10,NextTop(top),256,20,strAutosavePTEnd, fntMetal);
+      CheckBoxs_AutosaveAtGameEnd := TKMCheckBox.Create(Panel_Game,10,NextTop(top, ROW_H),256,ROW_H,strAutosavePTEnd, fntMetal);
       CheckBoxs_AutosaveAtGameEnd.OnClick := Change;
       NextTop(top, 20*(linesAutosavePTEnd - 1));
 
-      CheckBox_MakeSavePoints := TKMCheckBox.Create(Panel_Game, 10, NextTop(top),256,20,strSavePT, fntMetal);
+      CheckBox_MakeSavePoints := TKMCheckBox.Create(Panel_Game, 10, NextTop(top, ROW_H),256,ROW_H,strSavePT, fntMetal);
       CheckBox_MakeSavePoints.OnClick := Change;
       NextTop(top, 20*(linesSavePT - 1));
 
-      CheckBox_SaveWareDistribution := TKMCheckBox.Create(Panel_Game, 10, NextTop(top),256,20,strSaveWareDistribution, fntMetal);
+      CheckBox_SaveWareDistribution := TKMCheckBox.Create(Panel_Game, 10, NextTop(top, ROW_H),256,ROW_H,strSaveWareDistribution, fntMetal);
       CheckBox_SaveWareDistribution.OnClick := Change;
       NextTop(top, 20*(linesSaveWareDistribution - 1));
     end;
@@ -454,7 +507,7 @@ begin
     // Spectator
     if IsGame and (gGameParams.Mode = gmMultiSpectate) then
     begin
-      CheckBox_SpecShowBeacons := TKMCheckBox.Create(Panel_Game, 10, NextTop(top), 256, 20, gResTexts[TX_GAME_SETTINGS_SHOW_BEACONS], fntMetal);
+      CheckBox_SpecShowBeacons := TKMCheckBox.Create(Panel_Game, 10, NextTop(top, ROW_H), 256, ROW_H, gResTexts[TX_GAME_SETTINGS_SHOW_BEACONS], fntMetal);
       CheckBox_SpecShowBeacons.Hint := gResTexts[TX_GAME_SETTINGS_SHOW_BEACONS_HINT];
       CheckBox_SpecShowBeacons.OnClick := Change;
     end;
@@ -465,16 +518,16 @@ begin
       if top > 10 then
         Inc(top, 15);
 
-      Label_PlayersColorMode := TKMLabel.Create(Panel_Game, 10, NextTop(top), 256, 20, gResTexts[TX_PLAYERS_COLOR_MODE_CAPTION], fntMetal, taLeft);
+      Label_PlayersColorMode := TKMLabel.Create(Panel_Game, 10, NextTop(top, ROW_H), 256, 20, gResTexts[TX_PLAYERS_COLOR_MODE_CAPTION], fntMetal, taLeft);
 
-      Radio_PlayersColorMode := TKMRadioGroup.Create(Panel_Game,10,NextTop(top),256,60,fntMetal);
+      Radio_PlayersColorMode := TKMRadioGroup.Create(Panel_Game,10,NextTop(top),256,3*ROW_H,fntMetal);
 //        Radio_PlayersColorMode.Anchors := [anLeft, anBottom];
       Radio_PlayersColorMode.ItemIndex := 0;
       Radio_PlayersColorMode.Add(gResTexts[TX_PLAYERS_COLOR_MODE_DEFAULT], gResTexts[TX_PLAYERS_COLOR_MODE_DEFAULT_HINT]);
       Radio_PlayersColorMode.Add(gResTexts[TX_PLAYERS_COLOR_MODE_ALLY_ENEMY], gResTexts[TX_PLAYERS_COLOR_MODE_ALLY_ENEMY_HINT]);
       Radio_PlayersColorMode.Add(gResTexts[TX_PLAYERS_COLOR_MODE_TEAMS], gResTexts[TX_PLAYERS_COLOR_MODE_TEAMS_HINT]);
       Radio_PlayersColorMode.OnChange := Change;
-      Inc(top, 40);
+      Inc(top, 3*ROW_H - 20);
     end;
 
   Panel_Game.Height := top + 20 + 3;
@@ -494,24 +547,24 @@ begin
     Inc(aTopBlock, 4);
 
   //Replays section
-  Panel_Replays := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 50);
+  Panel_Replays := TKMPanel.Create(Panel_Content, aLeftBlock, aTopBlock, 280, 30 + ROW_H);
 
-  Panel_Replays.Anchors := [anLeft];
+  Panel_Replays.Anchors := BLOCK_ANCHORS;
     TKMLabel.Create(Panel_Replays,6,0,270,20,gResTexts[TX_WORD_REPLAY] + ':',fntOutline,taLeft);
     Bevel_Replays := TKMBevel.Create(Panel_Replays,0,20,280,Panel_Replays.Height - 20);
 
-    CheckBox_ReplayAutopause := TKMCheckBox.Create(Panel_Replays,10,27,256,20,gResTexts[TX_SETTINGS_PAUSE_AT_PT_END], fntMetal);
+    CheckBox_ReplayAutopause := TKMCheckBox.Create(Panel_Replays,10,27,256,ROW_H,gResTexts[TX_SETTINGS_PAUSE_AT_PT_END], fntMetal);
     CheckBox_ReplayAutopause.OnClick := Change;
 
-    height := 50;
+    height := 30 + ROW_H;
 
   if not IsMenu and gGameParams.IsReplay then
   begin
-    CheckBox_ReplayShowBeacons := TKMCheckBox.Create(Panel_Replays, 10, 47, 256, 20, gResTexts[TX_GAME_SETTINGS_SHOW_BEACONS], fntMetal);
+    CheckBox_ReplayShowBeacons := TKMCheckBox.Create(Panel_Replays, 10, 27 + ROW_H, 256, ROW_H, gResTexts[TX_GAME_SETTINGS_SHOW_BEACONS], fntMetal);
     CheckBox_ReplayShowBeacons.Hint := gResTexts[TX_GAME_SETTINGS_SHOW_BEACONS_HINT];
     CheckBox_ReplayShowBeacons.OnClick := Change;
 
-    Inc(height, 20);
+    Inc(height, ROW_H);
   end;
 
   Panel_Replays.Height := height;
@@ -528,13 +581,16 @@ begin
 
   // Mods
 //  Panel_Options_Mods := TKMPanel.Create(Panel_Options,300,bottomLine-20,280,50);
-  Panel_Mods := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 50);
-  Panel_Mods.Anchors := [anLeft];
+  Panel_Mods := TKMPanel.Create(Panel_Content, aLeftBlock, aTopBlock, 280, 30 + 2*ROW_H);
+  Panel_Mods.Anchors := BLOCK_ANCHORS;
     TKMLabel.Create(Panel_Mods,6,0,270,20,gResTexts[TX_MENU_OPTIONS_MODS] + ':',fntOutline,taLeft);
-    TKMBevel.Create(Panel_Mods,0,20,280,30);
+    TKMBevel.Create(Panel_Mods,0,20,280,10 + 2*ROW_H);
 
-    CheckBox_SnowHouses := TKMCheckBox.Create(Panel_Mods,10,27,256,20,gResTexts[TX_MENU_OPTIONS_MODS_SNOW_HOUSES], fntMetal);
+    CheckBox_SnowHouses := TKMCheckBox.Create(Panel_Mods,10,27,256,ROW_H,gResTexts[TX_MENU_OPTIONS_MODS_SNOW_HOUSES], fntMetal);
     CheckBox_SnowHouses.OnClick := Change;
+    // shortcut: English only and applied when the next game starts or loads, see TKMGamePlayInterface.MoveSidebarRight
+    CheckBox_SidebarOnRight := TKMCheckBox.Create(Panel_Mods,10,27 + ROW_H,256,ROW_H,'Sidebar on the right', fntMetal);
+    CheckBox_SidebarOnRight.OnClick := Change;
 end;
 
 
@@ -546,18 +602,22 @@ begin
   if not IsMenu then Exit;
 
   // Language section
-  Panel_Lang := TKMPanel.Create(Panel_Options, aLeftBlock, aTopBlock, 280, 30 + gResLocales.Count*20);
+  Panel_Lang := TKMPanel.Create(Panel_Content, aLeftBlock, aTopBlock, 280, 30 + gResLocales.Count*ROW_H);
+  {$IFDEF ANDROID}
+  // The fonts check box below counts too, the scroll panel measures its sections
+  Panel_Lang.Height := Panel_Lang.Height + 20 + ROW_H;
+  {$ENDIF}
   NextBlock(aTopBlock, Panel_Lang);
-  Panel_Lang.Anchors := [anLeft];
+  Panel_Lang.Anchors := BLOCK_ANCHORS;
     TKMLabel.Create(Panel_Lang,6,0,242,20,gResTexts[TX_MENU_OPTIONS_LANGUAGE],fntOutline,taLeft);
-    TKMBevel.Create(Panel_Lang,0,20,280,10+gResLocales.Count*20);
+    TKMBevel.Create(Panel_Lang,0,20,280,10+gResLocales.Count*ROW_H);
 
-    Radio_Lang := TKMRadioGroup.Create(Panel_Lang, 28, 27, 220, 20*gResLocales.Count, fntMetal);
+    Radio_Lang := TKMRadioGroup.Create(Panel_Lang, 28, 27, 220, ROW_H*gResLocales.Count, fntMetal);
     SetLength(Image_Lang_Flags,gResLocales.Count);
     for I := 0 to gResLocales.Count - 1 do
     begin
       Radio_Lang.Add(gResLocales[I].Title);
-      Image_Lang_Flags[I] := TKMImage.Create(Panel_Lang,6,28+(I*20),16,11, gResLocales[I].FlagSpriteID, rxGuiMain);
+      Image_Lang_Flags[I] := TKMImage.Create(Panel_Lang,6,28+(I*ROW_H),16,11, gResLocales[I].FlagSpriteID, rxGuiMain);
       Image_Lang_Flags[I].Tag := I;
       Image_Lang_Flags[I].OnClick := FlagClick;
     end;
@@ -565,9 +625,9 @@ begin
 
   // Language Fonts section
 
-    TKMBevel.Create(Panel_Lang,0,30+gResLocales.Count*20+10,280,30);
+    TKMBevel.Create(Panel_Lang,0,30+gResLocales.Count*ROW_H+10,280,10 + ROW_H);
 
-    CheckBox_FullFonts := TKMCheckBox.Create(Panel_Lang, 10,30+gResLocales.Count*20+17,260,20, gResTexts[TX_MENU_OPTIONS_FONTS], fntMetal);
+    CheckBox_FullFonts := TKMCheckBox.Create(Panel_Lang, 10,30+gResLocales.Count*ROW_H+17,260,ROW_H, gResTexts[TX_MENU_OPTIONS_FONTS], fntMetal);
     CheckBox_FullFonts.OnClick := Change;
 end;
 
@@ -591,6 +651,7 @@ begin
   CheckBox_ShuffleOn.Checked    := gGameSettings.SFX.ShuffleOn;
   CheckBox_ShuffleOn.Enabled    := not CheckBox_MusicOff.Checked;
   CheckBox_SnowHouses.Checked   := gGameSettings.GFX.AllowSnowHouses;
+  CheckBox_SidebarOnRight.Checked := gGameSettings.SidebarOnRight;
 
   CheckBox_VideoEnable.Checked   := gGameSettings.Video.Enabled;
   CheckBox_VideoStretch.Checked  := gGameSettings.Video.VideoStretch;
@@ -668,6 +729,7 @@ begin
   gGameSettings.SFX.MusicEnabled       := not CheckBox_MusicOff.Checked;
   gGameSettings.SFX.ShuffleOn          := CheckBox_ShuffleOn.Checked;
   gGameSettings.GFX.AllowSnowHouses    := CheckBox_SnowHouses.Checked;
+  gGameSettings.SidebarOnRight         := CheckBox_SidebarOnRight.Checked;
 
   TrackBar_Music.Enabled      := not CheckBox_MusicOff.Checked;
   CheckBox_ShuffleOn.Enabled  := not CheckBox_MusicOff.Checked;
@@ -769,6 +831,10 @@ var
   I: Integer;
   resID, refID: Integer;
 begin
+  {$IFDEF ANDROID}
+  Button_ResApply.Enable;
+  Exit;
+  {$ENDIF}
   if fResolutions.Count = 0 then Exit;
 
   DropBox_Resolution.Enabled := CheckBox_FullScreen.Checked;
@@ -807,6 +873,15 @@ var
   ResID, RefID: Integer;
   NewResolution: TKMScreenRes;
 begin
+  {$IFDEF ANDROID}
+  // kam_frame applies the new scale on the next frame
+  gMainSettings.UIScale := UI_SCALES[EnsureRange(DropBox_Resolution.ItemIndex, Low(UI_SCALES), High(UI_SCALES))];
+  gMainSettings.FullScreen := CheckBox_FullScreen.Checked;
+  if Assigned(gHostSetDisplay) then
+    gHostSetDisplay(Ord(CheckBox_FullScreen.Checked));
+  Button_ResApply.Disable;
+  Exit;
+  {$ENDIF}
   if fResolutions.Count = 0 then Exit;
 
   gMainSettings.FullScreen := CheckBox_FullScreen.Checked;
@@ -853,6 +928,22 @@ var
   resIndex: TKMScreenResIndex;
   selectedResolutionIndex: Integer;
 begin
+  {$IFDEF ANDROID}
+  // The entry nearest to the setting is selected
+  // shortcut: the check box follows the last Apply, not a full screen switch made with the window's own button
+  DropBox_Resolution.Clear;
+  selectedResolutionIndex := 0;
+  for I := Low(UI_SCALES) to High(UI_SCALES) do
+  begin
+    DropBox_Resolution.Add(Format('%d%%', [Round(UI_SCALES[I] * 100)]));
+    if Abs(UI_SCALES[I] - gMainSettings.UIScale) < Abs(UI_SCALES[selectedResolutionIndex] - gMainSettings.UIScale) then
+      selectedResolutionIndex := I;
+  end;
+  DropBox_Resolution.ItemIndex := selectedResolutionIndex;
+  CheckBox_FullScreen.Checked := gMainSettings.FullScreen;
+  Button_ResApply.Disable;
+  Exit;
+  {$ENDIF}
   DropBox_Resolution.Clear;
   DropBox_RefreshRate.Clear;
 
@@ -933,6 +1024,10 @@ procedure TKMGUICommonOptions.Show;
 begin
   Refresh;
   Panel_Options.Show;
+  {$IFDEF ANDROID}
+  // Sections measured while the page was hidden count as empty
+  TKMScrollPanel(Panel_Content).UpdateScrolls;
+  {$ENDIF}
 end;
 
 

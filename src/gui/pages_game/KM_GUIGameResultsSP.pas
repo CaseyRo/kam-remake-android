@@ -45,6 +45,7 @@ type
   protected
     Panel_Results: TKMPanel;
       Label_Results: TKMLabel;
+      Label_Achievements: TKMLabel;
       Panel_Stats: TKMPanel;
         Label_MissionTime: TKMLabel;
         Label_Stat: array [1..10] of TKMLabel;
@@ -75,7 +76,7 @@ type
 
 implementation
 uses
-  KM_ResTexts, KM_Game, KM_GameApp, KM_GameParams, KM_HandsCollection,
+  KM_ResTexts, KM_Game, KM_GameApp, KM_Achievements, KM_GameParams, KM_HandsCollection,
   KM_CommonUtils, KM_Resource, KM_Hand, KM_RenderUI, KM_ResFonts,
   KM_ResWares, KM_HandStats,
   KM_ResTypes,
@@ -208,6 +209,14 @@ begin
   //Append difficulty level to game results caption
   if gGameParams.MissionDifficulty <> mdNone then
     Label_Results.Caption := Label_Results.Caption + ' (' + gResTexts[DIFFICULTY_LEVELS_TX[gGameParams.MissionDifficulty]] + ')';
+
+  // A later Reinit of the same page finds nothing new, so the caption is only ever set, not cleared
+  if (fGameResultMsg = grWin) and gGameParams.IsSingleplayerGame then
+  begin
+    cap := AchievementsMissionWon;
+    if cap <> '' then
+      Label_Achievements.Caption := '[$00D0FF]Achievement unlocked: ' + cap + '[]';
+  end;
 
 
   //This is SP menu, we are dead sure there's only one Human player (NOT REALLY)
@@ -406,6 +415,8 @@ begin
 
     Label_Results := TKMLabel.Create(Panel_Results,RESULTS_X_PADDING,70,900,20,NO_TEXT,fntMetal,taCenter);
     Label_Results.Anchors := [anLeft];
+    Label_Achievements := TKMLabel.Create(Panel_Results,RESULTS_X_PADDING,42,900,20,NO_TEXT,fntOutline,taCenter);
+    Label_Achievements.Anchors := [anLeft];
 
     Panel_Stats := TKMPanel.Create(Panel_Results, 20, 146, 360, 354);
     Panel_Stats.Anchors := [anLeft];

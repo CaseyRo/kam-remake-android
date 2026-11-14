@@ -22,9 +22,8 @@ KaM Remake installer from [kamremake.com](https://www.kamremake.com/download/) (
 | pinch / two-finger drag | zoom / scroll |
 | vertical drag on the left panel | scroll the panel when it does not fit the screen |
 | Back button | Esc (skip video, close panel) |
-| three-finger tap | interface scale (0.5–2.0) |
 
-USB/Bluetooth mouse and keyboard work as on PC.
+USB/Bluetooth mouse and keyboard work as on PC. The interface size is set in the game's Options (50–200%).
 
 ## Building
 
