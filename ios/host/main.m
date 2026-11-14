@@ -645,7 +645,9 @@ static void update_pause(void) {
   if (getenv("KAM_DATA_DIR")) _docs = [_docs stringByAppendingPathComponent:@(getenv("KAM_DATA_DIR"))];
   [NSFileManager.defaultManager createDirectoryAtPath:_docs withIntermediateDirectories:YES attributes:nil error:nil];
   // The Mac development build carries the game data in the app bundle (ios/run_mac.sh); first start copies it out
-  [self importFrom:[NSBundle.mainBundle.resourcePath stringByAppendingPathComponent:@"gamedata"]];
+  NSString *bundled = [NSBundle.mainBundle.resourcePath stringByAppendingPathComponent:@"gamedata"];
+  [self importFrom:bundled];
+  [self syncBundledMod:bundled];
   [self startGame];
 }
 
@@ -658,6 +660,19 @@ static NSArray<NSString *> *data_folders(void) {
 
 // Copies the game's data folders from a KaM Remake installation into Documents (names matched without regard to
 // case). Returns nil, or what went wrong
+// Mac development build only (its bundle carries the game data): the import above runs once, so a mod bundled later
+// (run_mac.sh KAM_MOD=...) would never arrive. Keep Documents/Modding graphics equal to the bundle's on every start:
+// a build with a mod installs or refreshes it, a build without one removes it. Builds without bundled data (iPad,
+// TestFlight) never touch the folder, so a mod imported by the player stays.
+- (void)syncBundledMod:(NSString *)bundled {
+  NSFileManager *fm = NSFileManager.defaultManager;
+  if (![fm fileExistsAtPath:[bundled stringByAppendingPathComponent:@"data"]]) return;
+  NSString *from = [bundled stringByAppendingPathComponent:@"Modding graphics"];
+  NSString *to = [_docs stringByAppendingPathComponent:@"Modding graphics"];
+  [fm removeItemAtPath:to error:nil];
+  if ([fm fileExistsAtPath:from]) [fm copyItemAtPath:from toPath:to error:nil];
+}
+
 - (NSString *)importFrom:(NSString *)source {
   NSFileManager *fm = NSFileManager.defaultManager;
   NSArray<NSString *> *found = [fm contentsOfDirectoryAtPath:source error:nil] ?: @[];
