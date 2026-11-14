@@ -42,7 +42,7 @@ implementation
 uses
   KM_Defaults, KM_Utils,
   KM_RenderUI, KM_Cursor, KM_HandsCollection,
-  KM_Resource, KM_ResFonts, KM_ResHouses, KM_ResTexts, KM_ResTypes;
+  KM_Resource, KM_ResFonts, KM_ResHouses, KM_ResTexts, KM_ResTypes, KM_ResTheme;
 
 
 { TKMGUIGameBuild }
@@ -207,6 +207,7 @@ begin
   if gMySpectator.Hand.Locks.HouseCanBuild(GUIHouseOrder[I]) then
   begin
     Button_Build[I].Enable;
+    Button_Build[I].Locked := False;
     Button_Build[I].TexID := gRes.Houses[GUIHouseOrder[I]].GUIIcon;
     Button_Build[I].OnClick := Build_ButtonClick;
     Button_Build[I].Hint := gRes.Houses[GUIHouseOrder[I]].HouseName + gResTexts[TX_BUILD_HOUSE_POSTFIX];
@@ -214,7 +215,12 @@ begin
   else
   begin
     Button_Build[I].OnClick := nil;
-    Button_Build[I].TexID := 41;
+    // A theme can show the house's own icon, dimmed and padlocked, in place of the generic '?'
+    Button_Build[I].Locked := gUITheme.LockedHouse <> 0;
+    if Button_Build[I].Locked then
+      Button_Build[I].TexID := gRes.Houses[GUIHouseOrder[I]].GUIIcon
+    else
+      Button_Build[I].TexID := 41;
     Button_Build[I].Hint := gResTexts[TX_HOUSE_NOT_AVAILABLE]; //Building not available
   end;
 end;

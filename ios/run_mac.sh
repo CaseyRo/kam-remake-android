@@ -12,6 +12,8 @@ SRC="${KAM_DATA:-$(cd .. && pwd)/toolchain/kamres/app}"
 # APFS clones: no extra disk space
 rm -rf build/gamedata && mkdir -p build/gamedata
 for d in data Campaigns Maps MapsMP Music Sounds Tutorials; do cp -c -R "$SRC/$d" build/gamedata/; done
+# Optional mod: KAM_MOD=../mods/friendly ./run_mac.sh bundles its "Modding graphics" (sprites, theme.ini, fonts)
+[ -z "${KAM_MOD:-}" ] || cp -c -R "$KAM_MOD/Modding graphics" build/gamedata/
 xcodegen > /dev/null
 xcodebuild -project KaM.xcodeproj -scheme KaM -configuration Debug -destination "platform=macOS,arch=arm64,variant=Designed for iPad" \
   -derivedDataPath build/xcode-mac -allowProvisioningUpdates -allowProvisioningDeviceRegistration build 2>&1 | grep -E "error:|BUILD" | tee build/xcodebuild-mac.txt

@@ -91,7 +91,7 @@ type
 implementation
 uses
   SysUtils, Math,
-  KM_Resource, KM_ResTexts,
+  KM_Resource, KM_ResTexts, KM_ResTheme,
   KM_CommonUtils;
 
 
@@ -503,7 +503,7 @@ begin
     TKMRenderUI.WritePlot(G.Left, G.Top, G.Right-G.Left, G.Bottom-G.Top, fLines[fLineOver].Values, topValue, clChartHighlight, 3);
 
   //Outline
-  TKMRenderUI.WriteOutline(G.Left, G.Top, G.Right-G.Left, G.Bottom-G.Top, 1, icWhite);
+  TKMRenderUI.WriteOutline(G.Left, G.Top, G.Right-G.Left, G.Bottom-G.Top, 1, ThemeOr(gUITheme.ListLine, icWhite));
 
   //Title
   TKMRenderUI.WriteText(G.Left + 5, G.Top + 5, 0, fCaption, fFont, taLeft);

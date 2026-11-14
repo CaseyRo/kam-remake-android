@@ -79,7 +79,7 @@ uses
   KM_ResTexts, KM_Game, KM_GameApp, KM_Achievements, KM_GameParams, KM_HandsCollection,
   KM_CommonUtils, KM_Resource, KM_Hand, KM_RenderUI, KM_ResFonts,
   KM_ResWares, KM_HandStats,
-  KM_ResTypes,
+  KM_ResTypes, KM_ResTheme,
   KM_InterfaceTypes;
 
 const
@@ -397,6 +397,7 @@ const
     TX_RESULTS_WEAPONS_MADE,     TX_RESULTS_SOLDIERS_TRAINED, TX_RESULTS_MISSION_COMPLETED_IN);
 var
   I, adv: Integer;
+  lbl: TKMLabel;
 begin
   Panel_Results := TKMPanel.Create(aParent,0,0,aParent.Width, aParent.Height);
   Panel_Results.AnchorsStretch;
@@ -415,7 +416,7 @@ begin
 
     Label_Results := TKMLabel.Create(Panel_Results,RESULTS_X_PADDING,70,900,20,NO_TEXT,fntMetal,taCenter);
     Label_Results.Anchors := [anLeft];
-    Label_Achievements := TKMLabel.Create(Panel_Results,RESULTS_X_PADDING,42,900,20,NO_TEXT,fntOutline,taCenter);
+    Label_Achievements := TKMLabel.Create(Panel_Results,RESULTS_X_PADDING,42,900,20,'',fntOutline,taCenter); // Empty until a win unlocks one
     Label_Achievements.Anchors := [anLeft];
 
     Panel_Stats := TKMPanel.Create(Panel_Results, 20, 146, 360, 354);
@@ -437,10 +438,18 @@ begin
         begin
           Inc(adv, 45);
           Label_MissionTime := TKMLabel.Create(Panel_Stats, 20, adv, 240, 20, gResTexts[STAT_TEXT[I]], fntMetal, taLeft);
+          lbl := Label_MissionTime;
         end
         else
-          TKMLabel.Create(Panel_Stats, 20, adv, 240, 20, gResTexts[STAT_TEXT[I]], fntMetal, taLeft);
+          lbl := TKMLabel.Create(Panel_Stats, 20, adv, 240, 20, gResTexts[STAT_TEXT[I]], fntMetal, taLeft);
         Label_Stat[I] := TKMLabel.Create(Panel_Stats, 260, adv, 80, 20, '00', fntMetal, taRight);
+        // A theme can ink the stats for its light card: the plain ink font (no outline; a tinted outlined font
+        // fills in its counters). Its glyphs carry the ink already, a tint would multiply it to near black
+        if gUITheme.StatText <> 0 then
+        begin
+          lbl.Font := fntAntiqua;
+          Label_Stat[I].Font := fntAntiqua;
+        end;
       end;
 
     Panel_StatsCharts := TKMPanel.Create(Panel_Results, 400, 100, 630, 420);

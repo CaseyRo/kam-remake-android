@@ -33,7 +33,7 @@ implementation
 uses
   KM_Main,
   KM_GameApp,
-  KM_ResTexts, KM_ResFonts, KM_ResTypes,
+  KM_ResTexts, KM_ResFonts, KM_ResTypes, KM_ResTheme,
   KM_RenderUI;
 
 
@@ -48,7 +48,8 @@ begin
   Panel_MainMenu := TKMPanel.Create(aParent, 0, 0, aParent.Width, aParent.Height);
   Panel_MainMenu.AnchorsCenter;
     TKMImage.Create(Panel_MainMenu, 300, 120, 423, 164, 4, rxGuiMain);
-    TKMLabel.Create(Panel_MainMenu, 512, 300, 'Remake', fntMetal, taCenter);
+    if gUITheme.RemakeLabel then // A theme's logo can carry the word itself
+      TKMLabel.Create(Panel_MainMenu, 512, 300, 'Remake', fntMetal, taCenter);
 
     with TKMImage.Create(Panel_MainMenu,  50, 220, Round(218*1.3), Round(291*1.3), 5, rxGuiMain) do
       ImageStretch;

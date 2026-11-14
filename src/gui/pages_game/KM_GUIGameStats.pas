@@ -42,7 +42,7 @@ uses
   KM_Entity,
   KM_RenderUI, KM_HandsCollection, KM_ResTexts, KM_Resource, KM_ResFonts, KM_ResUnits,
   KM_Hand, KM_Pics, KM_Points,
-  KM_ResTypes;
+  KM_ResTypes, KM_ResTheme;
 
 
 { TKMGUIGameStats }
@@ -189,12 +189,18 @@ begin
       Stat_HouseWip[HT].Caption := IfThen(wipQty = 0, '', '+' + IntToStr(wipQty));
       if gMySpectator.Hand.Locks.HouseCanBuild(HT) or (qty > 0) then
       begin
+        Stat_HousePic[HT].Locked := False;
         Stat_HousePic[HT].TexID := gRes.Houses[HT].GUIIcon;
         Stat_HousePic[HT].Hint := gRes.Houses[HT].HouseName;
       end
       else
       begin
-        Stat_HousePic[HT].TexID := 41;
+        // A theme can show the house's own icon, dimmed and padlocked, in place of the generic '?'
+        Stat_HousePic[HT].Locked := gUITheme.LockedHouse <> 0;
+        if Stat_HousePic[HT].Locked then
+          Stat_HousePic[HT].TexID := gRes.Houses[HT].GUIIcon
+        else
+          Stat_HousePic[HT].TexID := 41;
         Stat_HousePic[HT].Hint := gResTexts[TX_HOUSE_NOT_AVAILABLE]; //Building not available
       end;
       if qty + wipQty > 0 then

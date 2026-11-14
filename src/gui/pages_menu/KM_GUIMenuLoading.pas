@@ -23,7 +23,7 @@ type
 
 implementation
 uses
-  KM_ResTexts, KM_RenderUI, KM_ResFonts;
+  KM_ResTexts, KM_RenderUI, KM_ResFonts, KM_ResTheme;
 
 
 { TKMGUIMenuLoading }
@@ -36,9 +36,17 @@ begin
   Panel_Loading := TKMPanel.Create(aParent,0,0,aParent.Width, aParent.Height);
   Panel_Loading.AnchorsStretch;
     with TKMLabel.Create(Panel_Loading, aParent.Width div 2, aParent.Height div 2 - 20, gResTexts[TX_MENU_LOADING], fntOutline, taCenter) do
+    begin
       AnchorsCenter;
+      if gUITheme.LoadingText <> 0 then FontColor := gUITheme.LoadingText; // Ink for a theme's light card
+    end;
     Label_Loading := TKMLabel.Create(Panel_Loading, aParent.Width div 2, aParent.Height div 2+10, '...', fntGrey, taCenter);
     Label_Loading.AnchorsCenter;
+    if gUITheme.LoadingText <> 0 then
+    begin
+      // The plain ink font (no outline: a tinted outlined font fills in its counters); its glyphs carry the ink
+      Label_Loading.Font := fntAntiqua;
+    end;
 end;
 
 

@@ -35,6 +35,9 @@ type
     {$ENDIF}
     class procedure ApplyClipX (X1,X2: SmallInt);
     class procedure ApplyClipY (Y1,Y2: SmallInt);
+    class function RoundedButtonLip(aHeight: SmallInt): Integer;
+    class procedure WriteRoundedButton(aWidth, aHeight: SmallInt; aTexID: Cardinal; const A, B: TKMPointF;
+      aState: TKMButtonStateSet; aRing: Boolean);
   public
     class procedure SetupClipX (X1,X2: SmallInt);
     class procedure SetupClipY (Y1,Y2: SmallInt);
@@ -43,6 +46,7 @@ type
 
     class procedure Write3DButton  (aLeft, aTop, aWidth, aHeight: SmallInt; aRX: TRXType; aID: Word; aFlagColor: TColor4;
       aState: TKMButtonStateSet; aStyle: TKMButtonStyle; aImageEnabled: Boolean = True);
+    class function ButtonContentShift(aState: TKMButtonStateSet; aHeight: SmallInt): TKMPoint;
 
     class procedure WriteBevel(aLeft, aTop, aWidth, aHeight: SmallInt;
                                aEdgeAlpha: Single = BEVEL_EDGE_ALPHA_DEF; aBackAlpha: Single = BEVEL_BACK_ALPHA_DEF); overload;
@@ -53,7 +57,8 @@ type
       aMainColor: Cardinal = icBarColorGreen; aAddColor: Cardinal = icBarColorBlue);
     class procedure WriteReplayBar (aLeft, aTop, aWidth, aHeight: SmallInt; aPos, aPeacetime, aMaxValue: Integer; aMarks: TList<Integer>; aPattern: Word; aHighlightedMark: Integer = -1);
     class procedure WritePicture   (aLeft, aTop, aWidth, aHeight: SmallInt; aAnchors: TKMAnchorsSet; aRX: TRXType; aID: Word;
-      aEnabled: Boolean = True; aColor: TColor4 = $FFFF00FF; aLightness: Single = 0);
+      aEnabled: Boolean = True; aColor: TColor4 = $FFFF00FF; aLightness: Single = 0; aTint: TColor4 = 0);
+    class procedure WriteLockedPicture(aLeft, aTop, aWidth, aHeight: SmallInt; aRX: TRXType; aID: Word);
     class procedure WritePlot      (aLeft, aTop, aWidth, aHeight: SmallInt; aValues: TKMCardinalArray; aMaxValue: Cardinal;
       aColor: TColor4; aLineWidth: Byte);
     class procedure WriteOutline   (aLeft, aTop, aWidth, aHeight, aLineWidth: SmallInt; Col: TColor4);
@@ -211,6 +216,7 @@ var
   c1, c2: Byte;
   backRX: TRXType;
   backID: Word;
+  shift: TKMPoint;
 begin
   if aStyle = bsMenu then
   begin
@@ -240,6 +246,27 @@ begin
     B.X := EnsureRange(B.X, u1, u2);
     A.Y := EnsureRange(A.Y, v1, v2);
     B.Y := EnsureRange(B.Y, v1, v2);
+  end;
+
+  if gUITheme.ButtonRadius > 0 then
+  begin
+    glPushMatrix;
+    try
+      glTranslatef(aLeft, aTop, 0);
+      WriteRoundedButton(aWidth, aHeight, gGFXData[backRX, backID].Tex.TexID, A, B, aState, False);
+      if aID <> 0 then
+      begin
+        shift := ButtonContentShift(aState, aHeight);
+        WritePicture(shift.X, shift.Y, aWidth, aHeight, [], aRX, aID, aImageEnabled, aFlagColor);
+      end;
+      // The ring goes over the picture
+      if (bsOver in aState) and not (bsDisabled in aState) then
+        WriteRoundedButton(aWidth, aHeight, 0, A, B, aState, True);
+      TKMRender.BindTexture(0);
+    finally
+      glPopMatrix;
+    end;
+    Exit;
   end;
 
   glPushMatrix;
@@ -311,6 +338,167 @@ begin
 end;
 
 
+// Lip of the rounded button, at most a quarter of its height (scroll thumbs, small arrows)
+class function TKMRenderUI.RoundedButtonLip(aHeight: SmallInt): Integer;
+begin
+  Result := Min(gUITheme.ButtonLip, aHeight div 4);
+end;
+
+
+// Where a 3D button's caption and picture go relative to the button: the chamfered button moves them 1 px when
+// pressed; the rounded one centres them on its face, which sits on the lip, sinks onto it when pressed and covers
+// the whole button when disabled
+class function TKMRenderUI.ButtonContentShift(aState: TKMButtonStateSet; aHeight: SmallInt): TKMPoint;
+var
+  lip: Integer;
+begin
+  if gUITheme.ButtonRadius = 0 then
+    Exit(KMPoint(Byte(bsDown in aState), Byte(bsDown in aState)));
+
+  lip := RoundedButtonLip(aHeight);
+  if bsDisabled in aState then
+    Result := KMPoint(0, 0)
+  else
+  if bsDown in aState then
+    Result := KMPoint(0, lip - lip div 2)
+  else
+    Result := KMPoint(0, -(lip div 2));
+end;
+
+
+// The theme's rounded 3D button, at 0,0 (the caller translates). aRing = False draws the body: the button tile
+// (aTexID, mapped A..B over the button like the square button) as a rounded face on a lip of the same tile,
+// darker; pressed, the face sits on the lip; disabled, the face alone, faded. aRing = True draws the hover ring
+// just inside the face. Edges get a 1 screen px alpha fringe in place of multisampling. Hit area = the button rect
+class procedure TKMRenderUI.WriteRoundedButton(aWidth, aHeight: SmallInt; aTexID: Cardinal; const A, B: TKMPointF;
+  aState: TKMButtonStateSet; aRing: Boolean);
+const
+  SEG = 5;          // Segments per corner
+  N = 4 * (SEG + 1); // Points on the contour
+  LIP_SHADE = 0.6;  // The lip is the face's own tile, darker, so it suits every button style
+  RING_W = 2;
+var
+  r, lip, aa: Single;
+  colR, colG, colB, colA: Single;
+  textured: Boolean;
+  faceTop, faceBottom: Single;
+
+  // Point I of the contour of rect x0..x1, y0..y1 with corner radius r, inset by d (corners keep their centres)
+  procedure ContourPt(x0, y0, x1, y1, d: Single; I: Integer; out aX, aY: Single);
+  var
+    rr, cx, cy, ang: Single;
+    corner: Integer;
+  begin
+    rr := r - d;
+    if rr < 0 then rr := 0;
+    corner := I div (SEG + 1);
+    // Clockwise from the top-left corner, which starts pointing left (180 degrees; y grows down)
+    ang := (corner + 2 + (I mod (SEG + 1)) / SEG) * Pi / 2;
+    if corner in [0, 3] then cx := x0 + d + rr else cx := x1 - d - rr;
+    if corner in [0, 1] then cy := y0 + d + rr else cy := y1 - d - rr;
+    aX := cx + rr * Cos(ang);
+    aY := cy + rr * Sin(ang);
+  end;
+
+  procedure Vtx(aX, aY, aAlpha: Single);
+  begin
+    glColor4f(colR, colG, colB, colA * aAlpha);
+    if textured then
+      glTexCoord2f(A.X + (B.X - A.X) * aX / aWidth, A.Y + (B.Y - A.Y) * aY / aHeight);
+    glVertex2f(aX, aY);
+  end;
+
+  // Strip between the contour inset d1 (alpha a1) and the one inset d2 (alpha a2)
+  procedure Band(x0, y0, x1, y1, d1, a1, d2, a2: Single);
+  var
+    I: Integer;
+    x, y: Single;
+  begin
+    glBegin(GL_TRIANGLE_STRIP);
+      for I := 0 to N do
+      begin
+        ContourPt(x0, y0, x1, y1, d1, I mod N, x, y);
+        Vtx(x, y, a1);
+        ContourPt(x0, y0, x1, y1, d2, I mod N, x, y);
+        Vtx(x, y, a2);
+      end;
+    glEnd;
+  end;
+
+  procedure Fill(x0, y0, x1, y1: Single);
+  var
+    I: Integer;
+    x, y: Single;
+  begin
+    glBegin(GL_TRIANGLE_FAN);
+      Vtx((x0 + x1) / 2, (y0 + y1) / 2, 1);
+      for I := 0 to N do
+      begin
+        ContourPt(x0, y0, x1, y1, aa, I mod N, x, y);
+        Vtx(x, y, 1);
+      end;
+    glEnd;
+    Band(x0, y0, x1, y1, 0, 0, aa, 1);
+  end;
+
+  procedure SetCol(aR, aG, aB, aA: Single);
+  begin
+    colR := aR; colG := aG; colB := aB; colA := aA;
+  end;
+
+begin
+  if (aWidth <= 0) or (aHeight <= 0) then Exit;
+
+  r := Min(gUITheme.ButtonRadius, Min(aWidth, aHeight) div 2);
+  lip := RoundedButtonLip(aHeight);
+  aa := 1 / gRender.UIScale; // 1 screen px
+
+  if bsDisabled in aState then
+  begin
+    faceTop := 0;
+    faceBottom := aHeight;
+  end else
+  if bsDown in aState then
+  begin
+    faceTop := lip;
+    faceBottom := aHeight;
+  end else
+  begin
+    faceTop := 0;
+    faceBottom := aHeight - lip;
+  end;
+
+  if aRing then
+  begin
+    textured := False;
+    TKMRender.BindTexture(0);
+    SetCol((gUITheme.ButtonRing and $FF) / 255, (gUITheme.ButtonRing shr 8 and $FF) / 255,
+           (gUITheme.ButtonRing shr 16 and $FF) / 255, (gUITheme.ButtonRing shr 24) / 255);
+    Band(0, faceTop, aWidth, faceBottom, 0, 0, aa, 1);
+    Band(0, faceTop, aWidth, faceBottom, aa, 1, RING_W, 1);
+    Band(0, faceTop, aWidth, faceBottom, RING_W, 1, RING_W + aa, 0);
+    Exit;
+  end;
+
+  textured := True;
+  TKMRender.BindTexture(aTexID);
+
+  if bsDisabled in aState then
+    SetCol(1, 1, 1, gUITheme.ButtonDisabledAlpha)
+  else
+  if bsDown in aState then
+    SetCol(0.9, 0.9, 0.9, 1)
+  else
+  begin
+    // Lip: starts lower so its top corners stay under the face
+    SetCol(LIP_SHADE, LIP_SHADE, LIP_SHADE, 1);
+    Fill(0, lip, aWidth, aHeight);
+    SetCol(1, 1, 1, 1);
+  end;
+  Fill(0, faceTop, aWidth, faceBottom);
+end;
+
+
 class procedure TKMRenderUI.WriteBevel(aLeft, aTop, aWidth, aHeight: SmallInt;
                                        aEdgeAlpha: Single = BEVEL_EDGE_ALPHA_DEF; aBackAlpha: Single = BEVEL_BACK_ALPHA_DEF);
 begin
@@ -322,14 +510,17 @@ class procedure TKMRenderUI.WriteBevel(aLeft, aTop, aWidth, aHeight: SmallInt; c
                                        aEdgeAlpha: Single = BEVEL_EDGE_ALPHA_DEF; aBackAlpha: Single = BEVEL_BACK_ALPHA_DEF);
 var
   back, edge: TKMColor3f;
+  light: Cardinal;
 begin
   if (aWidth < 0) or (aHeight < 0) then Exit;
 
   // The engine's black panels take the mod theme's colour and density (no theme = black, alphas as given)
   back := aColor;
   edge := COLOR3F_BLACK;
+  light := 0;
   if (aColor.R = 0) and (aColor.G = 0) and (aColor.B = 0) then
   begin
+    light := gUITheme.ListLine;
     back := gUITheme.BevelColor;
     edge := gUITheme.BevelEdge;
     aBackAlpha := ThemedBevelAlpha(aBackAlpha);
@@ -351,9 +542,14 @@ begin
     //2 Thin outlines rendered on top of background to avoid inset calculations
     if aEdgeAlpha > 0 then
     begin
-      //Bright edge
-      glBlendFunc(GL_DST_COLOR, GL_ONE);
-      glColor3f(0.75 * aEdgeAlpha, 0.75 * aEdgeAlpha, 0.75 * aEdgeAlpha);
+      //Bright edge. Additive light turns pure white over a light backdrop: a theme can give it a colour instead
+      if light <> 0 then
+        glColor4ub(light and $FF, light shr 8 and $FF, light shr 16 and $FF, Round((light shr 24) * aEdgeAlpha))
+      else
+      begin
+        glBlendFunc(GL_DST_COLOR, GL_ONE);
+        glColor3f(0.75 * aEdgeAlpha, 0.75 * aEdgeAlpha, 0.75 * aEdgeAlpha);
+      end;
       glBegin(GL_LINE_STRIP);
         glVertex2f(aWidth-0.5, 0.5);
         glVertex2f(aWidth-0.5, aHeight-0.5);
@@ -390,6 +586,8 @@ begin
 
     //At least 2px wide to show up from under the shadow
     barWidth := Round((aWidth - 2) * aPos) + 2;
+    if aMainColor = icBarColorGreen then
+      aMainColor := ThemeOr(gUITheme.BarFill, aMainColor);
     glColor4ubv(@aMainColor);
     glBegin(GL_QUADS);
       glkRect(1, 1, barWidth-1, aHeight-1);
@@ -503,8 +701,10 @@ begin
 end;
 
 
+// aTint <> 0 draws the picture multiplied by that colour and alpha, without its flag colour layer
 class procedure TKMRenderUI.WritePicture(aLeft, aTop, aWidth, aHeight: SmallInt; aAnchors: TKMAnchorsSet; aRX: TRXType;
-                                         aID: Word; aEnabled: Boolean = True; aColor: TColor4 = $FFFF00FF; aLightness: Single = 0);
+                                         aID: Word; aEnabled: Boolean = True; aColor: TColor4 = $FFFF00FF; aLightness: Single = 0;
+                                         aTint: TColor4 = 0);
 var
   offX, offY: Integer;
   drawWidth, drawHeight: Integer;
@@ -549,6 +749,9 @@ begin
 
       //Base layer
       TKMRender.BindTexture(Tex.TexID);
+      if aTint <> 0 then
+        glColor4ubv(@aTint)
+      else
       if aEnabled then glColor3f(1,1,1) else glColor3f(0.33,0.33,0.33);
       glBegin(GL_QUADS);
         glTexCoord2f(Tex.u1,Tex.v1); glVertex2f(0            , 0             );
@@ -558,7 +761,7 @@ begin
       glEnd;
 
       //Color overlay for unit icons and scrolls
-      if Alt.TexID <> 0 then
+      if (Alt.TexID <> 0) and (aTint = 0) then
       begin
         TKMRender.BindTexture(Alt.TexID);
         if aEnabled then
@@ -597,6 +800,26 @@ begin
       glPopMatrix;
     end;
   end;
+end;
+
+
+// A house the player cannot build yet, as the theme asks: its own icon (centred) in the theme's tint, with the
+// "not available" sprite (GUI 41) small in the icon's top-left corner
+class procedure TKMRenderUI.WriteLockedPicture(aLeft, aTop, aWidth, aHeight: SmallInt; aRX: TRXType; aID: Word);
+const
+  LOCK_H = 12;
+var
+  lockW: Integer;
+begin
+  if (aID = 0) or (aID > High(gGFXData[aRX])) then Exit;
+
+  WritePicture(aLeft, aTop, aWidth, aHeight, [], aRX, aID, True, $FFFF00FF, 0, gUITheme.LockedHouse);
+
+  if gGFXData[rxGui, 41].PxHeight = 0 then Exit;
+  lockW := Round(LOCK_H * gGFXData[rxGui, 41].PxWidth / gGFXData[rxGui, 41].PxHeight);
+  WritePicture(aLeft + Max((aWidth - gGFXData[aRX, aID].PxWidth) div 2, 0) + 1,
+               aTop + Max((aHeight - gGFXData[aRX, aID].PxHeight) div 2, 0) + 1,
+               lockW, LOCK_H, [anLeft, anTop, anRight, anBottom], rxGui, 41);
 end;
 
 

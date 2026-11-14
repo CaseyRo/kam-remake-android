@@ -247,7 +247,9 @@ static void *render_thread(void *arg) {
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
   for (UITouch *t in touches) {
     if (t.type == UITouchTypeIndirectPointer) {
-      _mouseButton = (event.buttonMask & UIEventButtonMaskSecondary) ? 1 : 0;
+      // Right button: secondary click, or Control/Option-click for a Mac mouse or trackpad without one
+      _mouseButton = (event.buttonMask & UIEventButtonMaskSecondary)
+                     || (event.modifierFlags & (UIKeyModifierControl | UIKeyModifierAlternate)) ? 1 : 0;
       [self sendMouse:TOUCH_DOWN button:_mouseButton at:[t locationInView:self]];
       continue;
     }

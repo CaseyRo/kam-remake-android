@@ -113,6 +113,7 @@ type
     Lightness: Single;
     ClipToBounds: Boolean;
     Tiled: Boolean;
+    Locked: Boolean; // TexID is a house the player cannot build yet: drawn as WriteLockedPicture
     constructor Create(aParent: TKMPanel; aLeft, aTop, aWidth, aHeight: Integer; aTexID: Word; aRX: TRXType = rxGui;
                        aImageAnchors: TKMAnchorsSet = [anLeft, anTop]);
     property RX: TRXType read fRX write fRX;
@@ -210,6 +211,7 @@ type
   TKMButtonFlat = class(TKMButtonFlatCommon)
   public
     Down: Boolean;
+    Locked: Boolean; // TexID is a house the player cannot build yet: drawn as WriteLockedPicture
     procedure Paint; override;
   end;
 
@@ -553,6 +555,9 @@ begin
         TKMRenderUI.WritePicture(drawLeft + x * drawWidth, drawTop + y * drawHeight, drawWidth, drawHeight, ImageAnchors, fRX, fTexID, Enabled, fFlagColor, paintLightness);
   end
   else
+  if Locked then
+    TKMRenderUI.WriteLockedPicture(AbsLeft, AbsTop, Width, Height, fRX, fTexID)
+  else
     TKMRenderUI.WritePicture(AbsLeft, AbsTop, Width, Height, ImageAnchors, fRX, fTexID, Enabled, fFlagColor, paintLightness);
 
   if ClipToBounds then
@@ -722,6 +727,7 @@ var
   col: TColor4;
   stateSet: TKMButtonStateSet;
   textY, top: Integer;
+  shift: TKMPoint;
 begin
   inherited;
   stateSet := [];
@@ -739,7 +745,8 @@ begin
   //If disabled then text should be faded
   col := IfThen(Enabled, CapColor, ThemedDisabledText(icGray));
 
-  top := AbsTop + Byte(bsDown in stateSet) + CapOffsetY;
+  shift := TKMRenderUI.ButtonContentShift(stateSet, Height);
+  top := AbsTop + shift.Y + CapOffsetY;
 
   textY := gRes.Fonts[Font].GetTextSize(Caption).Y;
   case TextVAlign of
@@ -748,7 +755,7 @@ begin
     tvaMiddle:  Inc(top, (Height div 2) - (textY div 2) + 2);
     tvaBottom:  Inc(top, Height - textY);
   end;
-  TKMRenderUI.WriteText(AbsLeft + Byte(bsDown in stateSet) + CapOffsetX, top,
+  TKMRenderUI.WriteText(AbsLeft + shift.X + CapOffsetX, top,
                         Width, Caption, Font, fTextAlign, col);
 end;
 
@@ -797,6 +804,9 @@ var
 begin
   inherited;
 
+  if (TexID <> 0) and Locked then
+    TKMRenderUI.WriteLockedPicture(AbsLeft + TexOffsetX, AbsTop + TexOffsetY - 6 * Byte(Caption <> ''), Width, Height, RX, TexID)
+  else
   if TexID <> 0 then
     TKMRenderUI.WritePicture(AbsLeft + TexOffsetX,
                              AbsTop + TexOffsetY - 6 * Byte(Caption <> ''),
