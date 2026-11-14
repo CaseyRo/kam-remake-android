@@ -1,0 +1,337 @@
+"""Build the Friendly Mod game fonts (.fntx) from the OFL faces in tools/downloads (spec sections 2 and 3).
+
+  tools/.venv/bin/python tools/gen_fonts.py [--scale 1|1.5|2] [--only metal,grey] [--sheets]
+
+--scale 1 writes data/gfx/fonts/, 1.5 and 2 write data/gfx/fonts@1.5x/ and fonts@2x/.
+--sheets skips building and renders contact sheets from the written files to _originals/fontsheets/.
+
+Every slot keeps the original file's Used[] set (toolchain/kamres/.../fonts/<slot>.fntx), so coverage never shrinks.
+Glyphs follow the original convention: Width is the tight ink box (it is also the advance), YOffset is from the
+line top, and spacing comes from CharSpacing.
+"""
+import argparse
+import sys
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
+
+import freetype
+import numpy as np
+from PIL import Image, ImageDraw
+
+sys.path.insert(0, str(Path(__file__).parent))
+import fntx  # noqa: E402
+
+MOD = Path(__file__).resolve().parents[1]
+ORIG = MOD.parents[1] / "toolchain/kamres/app/data/gfx/fonts"
+DL = MOD / "tools/downloads"
+SHEETS = MOD / "_originals/fontsheets"
+
+FRAUNCES = ("Fraunces[SOFT,WONK,opsz,wght].ttf", {"wght": 900, "opsz": 9, "SOFT": 50})
+NOTO_SERIF_BLACK = ("NotoSerif[wdth,wght].ttf", {"wght": 900})
+JB_MONO = ("JetBrainsMono[wght].ttf", {"wght": 400})
+
+
+def nunito(w):
+    return ("Nunito[wght].ttf", {"wght": w})
+
+
+def noto_sans(w):
+    return ("NotoSans[wdth,wght].ttf", {"wght": w})
+
+
+WHITE = 0xFFFFFF
+# char = CharSpacing at 1x. Outlined slots: today's value minus 1 (spec). antiqua and arial lose the 1 px dark rim
+# their old glyphs had, so today's -1 would overlap the ink: they get +1 like game. gap = char + 2*outline is what
+# scales (the empty space between two fills).
+SLOTS = {
+    "metal":     dict(faces=[FRAUNCES, NOTO_SERIF_BLACK], cjk="Black", px=(14, 21, 28), ol=(2, 3, 4),
+                      fill=0xFFF6DF, line=0x5B3A21, onebit=True, base=14, word=6, char=-3),
+    "outline":   dict(faces=[FRAUNCES, NOTO_SERIF_BLACK], cjk="Black", px=(16, 24, 32), ol=(2, 3, 4),
+                      fill=0xFFF6DF, line=0x5B3A21, onebit=True, base=16, word=6, char=-3),
+    "antiqua":   dict(faces=[nunito(700), noto_sans(700)], cjk="Bold", px=(13, 20, 26), ol=(0, 0, 0),
+                      fill=0x3A2A1C, line=0, onebit=True, base=13, word=9, char=1),
+    "game":      dict(faces=[nunito(700), noto_sans(700)], cjk="Bold", px=(13, 20, 26), ol=(0, 0, 0),
+                      fill=WHITE, line=0, onebit=False, base=13, word=5, char=1),
+    "grey":      dict(faces=[nunito(800), noto_sans(800)], cjk="Bold", px=(13, 20, 26), ol=(1, 1, 2),
+                      fill=0xE6D2A6, line=0x4A2E18, onebit=True, base=13, word=5, char=-1),
+    "mini":      dict(faces=[nunito(800), noto_sans(800)], cjk=None, px=(10, 15, 20), ol=(0, 0, 0),
+                      fill=WHITE, line=0, onebit=False, base=10, word=4, char=1),
+    "arial":     dict(faces=[nunito(600), noto_sans(600)], cjk="Bold", px=(12, 18, 24), ol=(0, 0, 0),
+                      fill=WHITE, line=0, onebit=False, base=12, word=4, char=1),
+    "consolas8": dict(faces=[JB_MONO, noto_sans(400)], cjk=None, px=(10, 15, 20), ol=(0, 0, 0),
+                      fill=WHITE, line=0, onebit=False, base=10, word=None, char=0, mono=True),
+}
+SCALES = (1, 1.5, 2)
+LINE_SPACING = 5
+PAD = 1
+
+
+def rnd(x):
+    return int(x + 0.5) if x >= 0 else -int(-x + 0.5)
+
+
+def out_dir(scale):
+    return MOD / "data/gfx" / ("fonts" if scale == 1 else f"fonts@{scale:g}x")
+
+
+def cjk_order(cp):
+    if 0x1100 <= cp <= 0x11FF or 0x3130 <= cp <= 0x318F or 0xA960 <= cp <= 0xA97F or 0xAC00 <= cp <= 0xD7FF:
+        return ("kr", "jp", "sc")
+    if 0x3040 <= cp <= 0x30FF or 0x31F0 <= cp <= 0x31FF or 0xFF65 <= cp <= 0xFF9F:
+        return ("jp", "sc", "kr")
+    return ("sc", "jp", "kr")
+
+
+def open_face(spec, px):
+    path, axes = spec if isinstance(spec, tuple) else (spec, {})
+    face = freetype.Face(str(DL / path))
+    if axes:
+        info = face.get_variation_info()
+        face.set_var_design_coords([axes.get(a.tag, a.default) for a in info.axes])
+    face.set_pixel_sizes(0, px)
+    return face
+
+
+def bitmap(face, onebit):
+    """Rasterise the loaded glyph slot -> uint8 coverage (0/255 for 1-bit)."""
+    face.glyph.render(freetype.FT_RENDER_MODE_MONO if onebit else freetype.FT_RENDER_MODE_LIGHT)
+    bm = face.glyph.bitmap
+    if bm.rows == 0 or bm.width == 0:
+        return np.zeros((0, 0), np.uint8)
+    buf = np.array(bm.buffer, np.uint8).reshape(bm.rows, abs(bm.pitch))
+    if bm.pixel_mode == freetype.FT_PIXEL_MODE_MONO:
+        return np.unpackbits(buf, axis=1)[:, :bm.width] * np.uint8(255)
+    return buf[:, :bm.width]
+
+
+def disc(r):
+    # r=1 gives a plus (like the old grey font), r=2 a rounded square without corners
+    return [(dy, dx) for dy in range(-r, r + 1) for dx in range(-r, r + 1) if dx * dx + dy * dy <= r * r + r / 2]
+
+
+def rgb(c):
+    return (c >> 16) & 255, (c >> 8) & 255, c & 255
+
+
+class Slot:
+    def __init__(self, name, scale):
+        s = SLOTS[name]
+        k = SCALES.index(scale)
+        self.name, self.s, self.scale = name, s, scale
+        self.px, self.r = s["px"][k], s["ol"][k]
+        self.onebit, self.mono = s["onebit"], s.get("mono", False)
+        self.load = freetype.FT_LOAD_TARGET_MONO if self.onebit else freetype.FT_LOAD_TARGET_LIGHT
+        self.faces = [open_face(f, self.px) for f in s["faces"]]
+        self.cjk = {}
+        if s["cjk"]:
+            cpx = max(self.px, rnd(14 * scale))  # spec: CJK minimum 14 px at 1x
+            self.cjk = {r: open_face(f"NotoSansCJK{r}-{s['cjk']}.otf", cpx) for r in ("sc", "jp", "kr")}
+        self.base = rnd(s["base"] * scale)
+        self.char = rnd((s["char"] + 2 * s["ol"][0]) * scale) - 2 * self.r
+        self.dilate = disc(self.r)
+        prim = self.faces[0]
+        if self.mono:
+            prim.load_char("M", self.load)
+            self.cell_w = rnd(prim.glyph.advance.x / 64)
+            self.asc = rnd(prim.size.ascender / 64)
+            self.cell_h = self.asc + rnd(-prim.size.descender / 64)
+            self.word = self.cell_w  # KM_ResFonts: monospaced WordSpacing = any Char.Width
+            self.baseline = self.asc
+        else:
+            self.word = rnd(s["word"] * scale)
+            prim.load_char("H", self.load)
+            cap = bitmap(prim, self.onebit).shape[0]
+            # centre cap height plus outline in BaseHeight, like the old game font (caps 1..11 in 13)
+            self.baseline = (self.base - cap - 2 * self.r) // 2 + self.r + cap
+        self.used_face = {}
+        self.missing = []
+
+    def pick(self, cp):
+        for i, f in enumerate(self.faces):
+            if f.get_char_index(cp):
+                return f, ("primary" if i == 0 else "fallback")
+        for r in cjk_order(cp):
+            f = self.cjk.get(r)
+            if f and f.get_char_index(cp):
+                return f, "cjk-" + r
+        return None, "missing"
+
+    def glyph(self, cp):
+        """-> (rgba image h*w*4, yoff), from face, '.notdef' of the primary face when nothing covers cp."""
+        face, src = self.pick(cp) if cp else (None, "notdef")
+        self.used_face[src] = self.used_face.get(src, 0) + 1
+        if src == "missing":
+            self.missing.append(f"{cp:04X}")
+        if face is None:
+            face = self.faces[0]
+            face.load_glyph(0, self.load)
+        else:
+            face.load_char(cp, self.load)
+        adv = face.glyph.advance.x / 64
+        left, top = face.glyph.bitmap_left, face.glyph.bitmap_top
+        cov = bitmap(face, self.onebit)
+        if self.mono:
+            return self.mono_cell(cov, left, top), 0
+        if cov.size == 0 or not cov.any():
+            return np.zeros((1, max(1, rnd(adv)), 4), np.uint8), 0  # spaces: advance width, nothing drawn
+        r = self.r
+        h, w = cov.shape
+        a = np.zeros((h + 2 * r, w + 2 * r), np.uint8)
+        a[r:r + h, r:r + w] = cov
+        img = np.zeros(a.shape + (4,), np.uint8)
+        if self.onebit:
+            fill = a >= 128
+            edge = np.zeros_like(fill)
+            for dy, dx in self.dilate:
+                edge[max(0, dy):a.shape[0] + min(0, dy), max(0, dx):a.shape[1] + min(0, dx)] |= \
+                    fill[max(0, -dy):a.shape[0] + min(0, -dy), max(0, -dx):a.shape[1] + min(0, -dx)]
+            img[edge] = (*rgb(self.s["line"]), 255)
+            img[fill] = (*rgb(self.s["fill"]), 255)
+        else:
+            img[..., :3] = rgb(self.s["fill"])
+            img[..., 3] = a
+        ys, xs = np.nonzero(img[..., 3])
+        img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        return img, self.baseline - top - r + int(ys.min())
+
+    def mono_cell(self, cov, left, top):
+        cell = np.zeros((self.cell_h, self.cell_w, 4), np.uint8)
+        cell[..., :3] = 255
+        if cov.size:
+            y0, x0 = self.asc - top, left
+            h, w = cov.shape
+            sy, sx = max(0, -y0), max(0, -x0)
+            ey, ex = min(h, self.cell_h - y0), min(w, self.cell_w - x0)
+            if ey > sy and ex > sx:  # glyphs wider than the cell are clipped, as a monospace console would
+                cell[y0 + sy:y0 + ey, x0 + sx:x0 + ex, 3] = cov[sy:ey, sx:ex]
+        return cell
+
+
+def build(name, scale):
+    sl = Slot(name, scale)
+    used = sorted(fntx.read_used(ORIG / f"{name}.fntx"))
+    orig_w = 256
+    orig_h = 256 if name == "consolas8" else 512
+    tw, th = (orig_w, orig_h) if scale == 1 else (orig_w * 2, orig_h * 2)  # 256x512 cannot hold CJK at 1.5x/2x in 255 atlases
+    font = fntx.Font(sl.base, sl.word, sl.char, rnd(LINE_SPACING * scale), tex_w=tw, tex_h=th)
+    atlas, x, y, row = None, 0, 0, 0
+    for cp in used:
+        img, yoff = sl.glyph(cp)
+        h, w = img.shape[:2]
+        if x + w > tw:
+            x, y, row = 0, y + row + PAD, 0
+        if atlas is None or y + h > th:
+            atlas = np.zeros((th, tw, 4), np.uint8)
+            font.atlases.append(atlas)
+            x, y, row = 0, 0, 0
+        atlas[y:y + h, x:x + w] = img
+        font.letters[cp] = fntx.Letter(w, h, yoff, len(font.atlases) - 1, x / tw, y / th, (x + w) / tw, (y + h) / th)
+        x, row = x + w + PAD, max(row, h)
+    assert len(font.atlases) <= 255, f"{name}@{scale}: {len(font.atlases)} atlases, AtlasCount is a byte"
+    path = out_dir(scale) / f"{name}.fntx"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fntx.write(path, font)
+
+    # check the written file with the reader
+    back = fntx.read(path)
+    assert set(back.letters) == set(used), "glyph set differs from the original Used[]"
+    assert (back.tex_w, back.tex_h, back.base_height) == (tw, th, sl.base)
+    first = max((cp for cp, L in back.letters.items() if L.atlas == 0), default=-1)
+    return (f"{name:9s} @{scale:g}x px {sl.px:2d}+{sl.r} base {back.base_height} word {back.word_spacing} "
+            f"char {back.char_spacing} line {back.line_spacing} | glyphs {len(back.letters)} (orig {len(used)}) | "
+            f"atlases {len(back.atlases)} x {tw}x{th} (atlas 0 up to U+{first:04X}) | "
+            f"{path.stat().st_size // 1024} KB | faces {sl.used_face} | box only: {' '.join(sl.missing)}")
+
+
+# ---------------------------------------------------------------- contact sheets (draws like KM_RenderUI.WriteText)
+
+SAMPLES = [
+    "Single Player  Options  Quit  0123456789 (10/20) 75%",
+    "Größe Ärger Œuvre ąćęłńóśźż čďěňřšťůž ğışİ şţ ėįųū ÉÇÑ ¿¡?!",
+    "Съешь же ещё этих мягких французских булок. ЁЖЩЯ",
+    "中文游戏 开始战斗 日本語 ゲーム開始 カタカナ 한국어 게임 시작",
+]
+BG = {"metal": 0x55623A, "outline": 0x55623A, "grey": 0x55623A, "antiqua": 0xEADBB8}
+
+
+def rgb5a1(img):
+    out = img.copy()
+    out[..., :3] = (img[..., :3] & 0xF8) | (img[..., :3] >> 5)
+    return out
+
+
+def draw_text(canvas, font, text, x, y, tint5551):
+    for ch in text:
+        if ch == " ":
+            x += font.word_spacing
+            continue
+        cp = ord(ch)
+        L = font.letters.get(cp, font.letters.get(0, fntx.Letter(0, 0, 0, 0, 0, 0, 0, 0)))  # engine: Letters[0]
+        a = font.atlases[L.atlas]
+        u, v = round(L.u1 * font.tex_w), round(L.v1 * font.tex_h)
+        g = a[v:v + L.h, u:u + L.w]
+        if tint5551:
+            g = rgb5a1(g)
+        canvas.alpha_composite(Image.fromarray(g, "RGBA"), (x, y + L.yoff))
+        x += max(0, L.w + font.char_spacing)
+    return x
+
+
+def ink_extent(font, cps):
+    ls = [font.letters[c] for c in cps if c in font.letters and font.letters[c].h > 1]
+    return (min(L.yoff for L in ls), max(L.yoff + L.h for L in ls)) if ls else (0, 0)
+
+
+def sheet(name):
+    rows = []
+    orig = fntx.read(ORIG / f"{name}.fntx")
+    latin = [c for c in range(0x21, 0x250)] + list(range(0x400, 0x460))
+    report = [f"{name}: original base {orig.base_height}, Latin/Cyr ink {ink_extent(orig, latin)}"]
+    for scale, zoom in ((0, 3), (1, 3), (1.5, 2), (2, 2)):
+        f = orig if scale == 0 else fntx.read(out_dir(scale) / f"{name}.fntx")
+        lh = f.base_height + f.line_spacing
+        W = max(40 + draw_text(Image.new("RGBA", (4000, 200)), f, t, 0, 20, False) for t in SAMPLES)
+        img = Image.new("RGBA", (W, 26 + lh * len(SAMPLES) + 6), (*rgb(BG.get(name, 0x2B2B2B)), 255))
+        d = ImageDraw.Draw(img)
+        d.text((4, 2), f"{name} {'ORIGINAL' if scale == 0 else f'{scale:g}x'}", fill=(255, 80, 80, 255))
+        for i, t in enumerate(SAMPLES):
+            top = 24 + i * lh
+            d.line([(0, top), (W, top)], fill=(255, 255, 255, 50))  # line top
+            d.line([(0, top + f.base_height), (W, top + f.base_height)], fill=(255, 60, 60, 110))  # BaseHeight
+            draw_text(img, f, t, 8, top, FONT_MODE[name] == "RGB5A1")
+        rows.append(img.resize((img.width * zoom, img.height * zoom), Image.NEAREST))
+        if scale:
+            cjk = [c for c in f.letters if 0x3040 <= c <= 0xD7AF]
+            report.append(f"  {scale:g}x base {f.base_height} line {lh} Latin/Cyr ink {ink_extent(f, latin)} "
+                          f"CJK ink {ink_extent(f, cjk)}")
+    out = Image.new("RGBA", (max(r.width for r in rows), sum(r.height for r in rows)), (0, 0, 0, 255))
+    y = 0
+    for r in rows:
+        out.paste(r, (0, y))
+        y += r.height
+    SHEETS.mkdir(parents=True, exist_ok=True)
+    out.convert("RGB").save(SHEETS / f"{name}.png")
+    return "\n".join(report)
+
+
+FONT_MODE = {"metal": "RGB5A1", "outline": "RGB5A1", "antiqua": "RGB5A1", "grey": "RGB5A1",
+             "game": "Alpha8", "mini": "Alpha8", "arial": "RGBA8", "consolas8": "RGBA8"}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--scale", type=float, default=1, choices=SCALES)
+    ap.add_argument("--only", default=",".join(SLOTS))
+    ap.add_argument("--sheets", action="store_true")
+    a = ap.parse_args()
+    names = a.only.split(",")
+    scale = 1 if a.scale == 1 else 2 if a.scale == 2 else 1.5
+    with ProcessPoolExecutor(max_workers=4) as ex:
+        jobs = [ex.submit(sheet, n) if a.sheets else ex.submit(build, n, scale) for n in names]
+        for j in jobs:
+            print(j.result(), flush=True)
+
+
+if __name__ == "__main__":
+    assert rnd(-4.5) == -5 and rnd(2.5) == 3 and disc(1) == [(-1, 0), (0, -1), (0, 0), (0, 1), (1, 0)]
+    main()

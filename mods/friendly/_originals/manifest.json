@@ -1,0 +1,1961 @@
+{
+  "source": "toolchain/kamres/app/data/Sprites (r16397)",
+  "exporter": "mods/friendly/tools/rxx_export.py",
+  "notes": [
+    "Overrides go to 'Modding graphics/<prefix>_<id>.png' (4 = GUI.rxx, 5 = GUIMain.rxx); zero padding is optional.",
+    "Team-colour mask: '<prefix>_<id>a.png' next to the png (white = player colour). '<prefix>_<id>m.png' is a plain greyscale mask and wins over 'a'.",
+    "Pivot: '<prefix>_<id>.txt', two lines X and Y. Without it the original pivot is kept.",
+    "In the exported png, team-colour pixels are drawn red (as F11 export does); repaint them in red/white shades and keep the a.png mask.",
+    "Keep each sprite the same pixel size as the original.",
+    "specSize for 301-329 comes from the spec's '32 px'; for 335-340 and 41 it is inferred from 'same plate style'.",
+    "Build icons are trimmed today (14x18 to 30x30), not 32x32: a 32 px plate is a size change. The engine accepts any size, but the art then fills the whole 33 px build button.",
+    "301-329 are 29 icons, all used as BuildIcon (KM_ResHouses), not 28.",
+    "GUI #41 is a question mark today, not a padlock. It is also used by school WIP, market, stats, ratios and the map-editor mission tab.",
+    "The menu loads GUI_a.rxx (LoadMenuResources, alpha shadows); every listed GUI sprite is byte-identical there (sameIn_GUI_a.rxx).",
+    "None of the listed sprites has a team-colour mask in the originals."
+  ],
+  "problems": [
+    "4_301: spec says 32x32, original is 29x19",
+    "4_302: spec says 32x32, original is 24x25",
+    "4_303: spec says 32x32, original is 28x27",
+    "4_304: spec says 32x32, original is 29x22",
+    "4_305: spec says 32x32, original is 29x22",
+    "4_306: spec says 32x32, original is 29x22",
+    "4_307: spec says 32x32, original is 18x30",
+    "4_308: spec says 32x32, original is 28x20",
+    "4_309: spec says 32x32, original is 30x28",
+    "4_310: spec says 32x32, original is 30x30",
+    "4_311: spec says 32x32, original is 26x21",
+    "4_312: spec says 32x32, original is 30x20",
+    "4_313: spec says 32x32, original is 25x25",
+    "4_314: spec says 32x32, original is 26x25",
+    "4_315: spec says 32x32, original is 29x26",
+    "4_316: spec says 32x32, original is 25x24",
+    "4_317: spec says 32x32, original is 29x29",
+    "4_318: spec says 32x32, original is 18x26",
+    "4_319: spec says 32x32, original is 29x30",
+    "4_320: spec says 32x32, original is 27x24",
+    "4_321: spec says 32x32, original is 26x21",
+    "4_322: spec says 32x32, original is 26x23",
+    "4_323: spec says 32x32, original is 30x30",
+    "4_324: spec says 32x32, original is 30x29",
+    "4_325: spec says 32x32, original is 27x26",
+    "4_326: spec says 32x32, original is 29x30",
+    "4_327: spec says 32x32, original is 29x27",
+    "4_328: spec says 32x32, original is 21x28",
+    "4_329: spec says 32x32, original is 22x28",
+    "4_335: spec says 32x32, original is 26x20",
+    "4_336: spec says 32x32, original is 26x23",
+    "4_337: spec says 32x32, original is 27x20",
+    "4_340: spec says 32x32, original is 19x19",
+    "4_41: spec says 32x32, original is 14x18",
+    "4_654: spec says 40x40, original is 24x26",
+    "4_655: spec says 40x40, original is 28x27",
+    "4_52: spec says 32x32, original is 31x30"
+  ],
+  "sprites": [
+    {
+      "archive": "GUIMain.rxx",
+      "id": 4,
+      "newArt": "Logo: Fraunces wordmark 'Knights & Merchants' with an oak ampersand and flourish",
+      "specSize": null,
+      "exists": true,
+      "width": 423,
+      "height": 164,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/5_0004.png",
+      "mask": null,
+      "overrideName": "Modding graphics/5_0004.png"
+    },
+    {
+      "archive": "GUIMain.rxx",
+      "id": 5,
+      "newArt": "Crest becomes a hanging banner: moss with a tower",
+      "specSize": null,
+      "exists": true,
+      "width": 218,
+      "height": 291,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/5_0005.png",
+      "mask": null,
+      "overrideName": "Modding graphics/5_0005.png"
+    },
+    {
+      "archive": "GUIMain.rxx",
+      "id": 6,
+      "newArt": "Crest becomes a hanging banner: oak with a wheat sheaf",
+      "specSize": null,
+      "exists": true,
+      "width": 209,
+      "height": 297,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/5_0006.png",
+      "mask": null,
+      "overrideName": "Modding graphics/5_0006.png"
+    },
+    {
+      "archive": "GUIMain.rxx",
+      "id": 9,
+      "newArt": "bsMenu tile. Flat moss #5D7E38, no baked light or lip (sampled in screen space at 2 screen px per texel)",
+      "specSize": null,
+      "exists": true,
+      "width": 300,
+      "height": 400,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/5_0009.png",
+      "mask": null,
+      "overrideName": "Modding graphics/5_0009.png"
+    },
+    {
+      "archive": "GUIMain.rxx",
+      "id": 17,
+      "newArt": "Linen parchment with painted rolling hills and a small town",
+      "specSize": null,
+      "exists": true,
+      "width": 700,
+      "height": 800,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/5_0017.png",
+      "mask": null,
+      "overrideName": "Modding graphics/5_0017.png"
+    },
+    {
+      "archive": "GUIMain.rxx",
+      "id": 18,
+      "newArt": "Torn burnt frame becomes a rounded honey-oak frame, radius 18, walnut inner line",
+      "specSize": null,
+      "exists": true,
+      "width": 1071,
+      "height": 822,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/5_0018.png",
+      "mask": null,
+      "overrideName": "Modding graphics/5_0018.png"
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 402,
+      "newArt": "bsGame tile: flat oak-light #C99A5E. Same screen-space rule as GUIMain 9",
+      "specSize": null,
+      "exists": true,
+      "width": 210,
+      "height": 400,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0402.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0402.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 404,
+      "newArt": "Sidebar planks, 224x400 tile, honey oak with walnut seams",
+      "specSize": [
+        224,
+        400
+      ],
+      "exists": true,
+      "width": 224,
+      "height": 400,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0404.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0404.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 407,
+      "newArt": "Sidebar top 224x200: linen minimap frame, radius 12, walnut ring, plus the vine edge",
+      "specSize": [
+        224,
+        200
+      ],
+      "exists": true,
+      "width": 224,
+      "height": 200,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0407.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0407.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 554,
+      "newArt": "Sidebar middle, 224x168, matching 407 and 404",
+      "specSize": [
+        224,
+        168
+      ],
+      "exists": true,
+      "width": 224,
+      "height": 168,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0554.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0554.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 439,
+      "newArt": "Tab icon: hammer. Ink 2 px round strokes, one warm fill, about 24 px",
+      "specSize": null,
+      "exists": true,
+      "width": 28,
+      "height": 26,
+      "pivot": [
+        -14,
+        -13
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0439.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0439.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 440,
+      "newArt": "Tab icon: scales. Ink 2 px round strokes, one warm fill, about 24 px",
+      "specSize": null,
+      "exists": true,
+      "width": 29,
+      "height": 27,
+      "pivot": [
+        -14,
+        -13
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0440.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0440.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 441,
+      "newArt": "Tab icon: ledger. Ink 2 px round strokes, one warm fill, about 24 px",
+      "specSize": null,
+      "exists": true,
+      "width": 27,
+      "height": 26,
+      "pivot": [
+        -13,
+        -13
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0441.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0441.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 442,
+      "newArt": "Tab icon: quill. Ink 2 px round strokes, one warm fill, about 24 px",
+      "specSize": null,
+      "exists": true,
+      "width": 28,
+      "height": 27,
+      "pivot": [
+        -14,
+        -13
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0442.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0442.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 443,
+      "newArt": "Back arrow, same style as the tab icons",
+      "specSize": null,
+      "exists": true,
+      "width": 28,
+      "height": 19,
+      "pivot": [
+        -14,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0443.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0443.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 301,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 29,
+      "height": 19,
+      "pivot": [
+        -14,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0301.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0301.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 302,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 24,
+      "height": 25,
+      "pivot": [
+        -12,
+        -12
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0302.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0302.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 303,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 28,
+      "height": 27,
+      "pivot": [
+        -14,
+        -13
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0303.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0303.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 304,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 29,
+      "height": 22,
+      "pivot": [
+        -14,
+        -11
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0304.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0304.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 305,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 29,
+      "height": 22,
+      "pivot": [
+        -14,
+        -11
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0305.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0305.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 306,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 29,
+      "height": 22,
+      "pivot": [
+        -14,
+        -11
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0306.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0306.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 307,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 18,
+      "height": 30,
+      "pivot": [
+        -9,
+        -15
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0307.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0307.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 308,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 28,
+      "height": 20,
+      "pivot": [
+        -14,
+        -10
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0308.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0308.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 309,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 30,
+      "height": 28,
+      "pivot": [
+        -15,
+        -14
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0309.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0309.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 310,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 30,
+      "height": 30,
+      "pivot": [
+        -15,
+        -15
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0310.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0310.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 311,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 26,
+      "height": 21,
+      "pivot": [
+        -13,
+        -10
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0311.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0311.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 312,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 30,
+      "height": 20,
+      "pivot": [
+        -15,
+        -10
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0312.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0312.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 313,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 25,
+      "height": 25,
+      "pivot": [
+        -12,
+        -12
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0313.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0313.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 314,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 26,
+      "height": 25,
+      "pivot": [
+        -13,
+        -12
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0314.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0314.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 315,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 29,
+      "height": 26,
+      "pivot": [
+        -14,
+        -13
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0315.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0315.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 316,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 25,
+      "height": 24,
+      "pivot": [
+        -12,
+        -12
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0316.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0316.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 317,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 29,
+      "height": 29,
+      "pivot": [
+        -14,
+        -14
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0317.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0317.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 318,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 18,
+      "height": 26,
+      "pivot": [
+        -9,
+        -13
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0318.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0318.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 319,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 29,
+      "height": 30,
+      "pivot": [
+        -14,
+        -15
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0319.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0319.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 320,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 27,
+      "height": 24,
+      "pivot": [
+        -13,
+        -12
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0320.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0320.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 321,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 26,
+      "height": 21,
+      "pivot": [
+        -13,
+        -10
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0321.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0321.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 322,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 26,
+      "height": 23,
+      "pivot": [
+        -13,
+        -11
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0322.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0322.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 323,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 30,
+      "height": 30,
+      "pivot": [
+        -15,
+        -15
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0323.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0323.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 324,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 30,
+      "height": 29,
+      "pivot": [
+        -15,
+        -14
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0324.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0324.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 325,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 27,
+      "height": 26,
+      "pivot": [
+        -13,
+        -13
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0325.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0325.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 326,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 29,
+      "height": 30,
+      "pivot": [
+        -14,
+        -15
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0326.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0326.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 327,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 29,
+      "height": 27,
+      "pivot": [
+        -7,
+        -6
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0327.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0327.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 328,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 21,
+      "height": 28,
+      "pivot": [
+        -10,
+        -14
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0328.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0328.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 329,
+      "newArt": "Build icon, 32 px: own 30 px plate with 6 px corners and the house's product or tool in ink (plate colour by category: linen civic, moss food, honey materials, woad military)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 22,
+      "height": 28,
+      "pivot": [
+        -11,
+        -14
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0329.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0329.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 335,
+      "newArt": "Road, build-plate style",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 26,
+      "height": 20,
+      "pivot": [
+        -13,
+        -10
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0335.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0335.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 336,
+      "newArt": "Wine, build-plate style",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 26,
+      "height": 23,
+      "pivot": [
+        -13,
+        -11
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0336.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0336.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 337,
+      "newArt": "Field, build-plate style",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 27,
+      "height": 20,
+      "pivot": [
+        -13,
+        -10
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0337.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0337.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 340,
+      "newArt": "Erase, build-plate style",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 19,
+      "height": 19,
+      "pivot": [
+        -9,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0340.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0340.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 41,
+      "newArt": "Locked house: walnut plate with a linen padlock (also the unknown-ware fallback icon)",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 14,
+      "height": 18,
+      "pivot": [
+        -7,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0041.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0041.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 351,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 17,
+      "height": 18,
+      "pivot": [
+        -8,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0351.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0351.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 352,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 15,
+      "height": 16,
+      "pivot": [
+        -7,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0352.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0352.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 353,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 17,
+      "pivot": [
+        -9,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0353.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0353.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 354,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 20,
+      "height": 17,
+      "pivot": [
+        -10,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0354.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0354.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 355,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 18,
+      "pivot": [
+        -9,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0355.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0355.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 356,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 18,
+      "pivot": [
+        -9,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0356.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0356.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 357,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 19,
+      "pivot": [
+        -9,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0357.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0357.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 358,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 17,
+      "pivot": [
+        -9,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0358.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0358.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 359,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 17,
+      "height": 19,
+      "pivot": [
+        -8,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0359.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0359.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 360,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 17,
+      "pivot": [
+        -9,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0360.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0360.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 361,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 16,
+      "pivot": [
+        -9,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0361.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0361.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 362,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 17,
+      "pivot": [
+        -9,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0362.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0362.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 363,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 19,
+      "pivot": [
+        -9,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0363.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0363.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 364,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 17,
+      "height": 18,
+      "pivot": [
+        -8,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0364.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0364.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 365,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 17,
+      "height": 18,
+      "pivot": [
+        -8,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0365.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0365.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 366,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 18,
+      "pivot": [
+        -9,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0366.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0366.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 367,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 17,
+      "height": 18,
+      "pivot": [
+        -8,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0367.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0367.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 368,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 15,
+      "height": 18,
+      "pivot": [
+        -7,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0368.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0368.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 369,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 16,
+      "pivot": [
+        -9,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0369.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0369.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 370,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 16,
+      "pivot": [
+        -9,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0370.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0370.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 371,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 14,
+      "pivot": [
+        -9,
+        -7
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0371.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0371.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 372,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 17,
+      "pivot": [
+        -9,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0372.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0372.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 373,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 18,
+      "pivot": [
+        -9,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0373.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0373.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 374,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 16,
+      "height": 18,
+      "pivot": [
+        -8,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0374.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0374.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 375,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 17,
+      "height": 17,
+      "pivot": [
+        -8,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0375.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0375.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 376,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 16,
+      "pivot": [
+        -9,
+        -8
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0376.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0376.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 377,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 18,
+      "pivot": [
+        -9,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0377.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0377.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 378,
+      "newArt": "Ware (351 + ware index; trunk 351, stone 352, timber 353 are the build costs), ink style",
+      "specSize": null,
+      "exists": true,
+      "width": 17,
+      "height": 18,
+      "pivot": [
+        -8,
+        -9
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0378.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0378.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 654,
+      "newArt": "Construction stone, 40x40",
+      "specSize": [
+        40,
+        40
+      ],
+      "exists": true,
+      "width": 24,
+      "height": 26,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0654.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0654.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 655,
+      "newArt": "Construction wood, 40x40",
+      "specSize": [
+        40,
+        40
+      ],
+      "exists": true,
+      "width": 28,
+      "height": 27,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0655.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0655.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 657,
+      "newArt": "Ware group icon",
+      "specSize": null,
+      "exists": true,
+      "width": 20,
+      "height": 14,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0657.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0657.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 658,
+      "newArt": "Ware group icon",
+      "specSize": null,
+      "exists": true,
+      "width": 18,
+      "height": 16,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0658.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0658.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 659,
+      "newArt": "Ware group icon",
+      "specSize": null,
+      "exists": true,
+      "width": 14,
+      "height": 18,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0659.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0659.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 37,
+      "newArt": "House panel delivery-mode button: a cart",
+      "specSize": null,
+      "exists": true,
+      "width": 22,
+      "height": 23,
+      "pivot": [
+        -11,
+        -11
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0037.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0037.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 40,
+      "newArt": "House panel repair button: a hammer with a green plus",
+      "specSize": null,
+      "exists": true,
+      "width": 23,
+      "height": 22,
+      "pivot": [
+        -11,
+        -11
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0040.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0040.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 491,
+      "newArt": "Message token (text), 30x48: round 26 px honey token, 2 px walnut ring, baked drop below",
+      "specSize": [
+        30,
+        48
+      ],
+      "exists": true,
+      "width": 30,
+      "height": 48,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0491.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0491.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 492,
+      "newArt": "Message token (house), 30x48: round 26 px honey token, 2 px walnut ring, baked drop below",
+      "specSize": [
+        30,
+        48
+      ],
+      "exists": true,
+      "width": 30,
+      "height": 48,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0492.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0492.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 493,
+      "newArt": "Message token (group), 30x48: round 26 px honey token, 2 px walnut ring, baked drop below",
+      "specSize": [
+        30,
+        48
+      ],
+      "exists": true,
+      "width": 30,
+      "height": 48,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0493.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0493.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 495,
+      "newArt": "Message token (quill / log), 30x48: round 26 px linen token, 2 px walnut ring, baked drop below",
+      "specSize": [
+        30,
+        48
+      ],
+      "exists": true,
+      "width": 30,
+      "height": 48,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0495.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0495.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 494,
+      "newArt": "Chat token, 30x48, speech bubble, same style",
+      "specSize": [
+        30,
+        48
+      ],
+      "exists": true,
+      "width": 30,
+      "height": 48,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0494.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0494.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 496,
+      "newArt": "Allies token, 30x48, woad with a shield",
+      "specSize": [
+        30,
+        48
+      ],
+      "exists": true,
+      "width": 30,
+      "height": 48,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0496.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0496.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 409,
+      "newArt": "Message scroll, 600x500 (190 px shown): linen card, radius 18 top corners, 2 px walnut edge, inner tan line, dashed stitch",
+      "specSize": [
+        600,
+        500
+      ],
+      "exists": true,
+      "width": 600,
+      "height": 500,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0409.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0409.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 52,
+      "newArt": "Close, 32x32: round linen button with an ink 'x'",
+      "specSize": [
+        32,
+        32
+      ],
+      "exists": true,
+      "width": 31,
+      "height": 30,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0052.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0052.png",
+      "sizeMismatch": true,
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 556,
+      "newArt": "Clock, 67x65: honey bezel, linen face, walnut hands",
+      "specSize": [
+        67,
+        65
+      ],
+      "exists": true,
+      "width": 67,
+      "height": 65,
+      "pivot": [
+        -33,
+        -32
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0556.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0556.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 132,
+      "newArt": "Slider thumb, stretched in width: plank with no corner detail, 2 px walnut edge, flat oak middle",
+      "specSize": null,
+      "exists": true,
+      "width": 24,
+      "height": 20,
+      "pivot": [
+        -12,
+        -10
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0132.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0132.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 590,
+      "newArt": "Dropdown arrow: cream triangle with ink outline",
+      "specSize": null,
+      "exists": true,
+      "width": 15,
+      "height": 10,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0590.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0590.png",
+      "sameIn_GUI_a.rxx": true
+    },
+    {
+      "archive": "GUI.rxx",
+      "id": 591,
+      "newArt": "Scroll arrow: cream triangle with ink outline",
+      "specSize": null,
+      "exists": true,
+      "width": 15,
+      "height": 10,
+      "pivot": [
+        0,
+        0
+      ],
+      "hasMask": false,
+      "png": "_originals/4_0591.png",
+      "mask": null,
+      "overrideName": "Modding graphics/4_0591.png",
+      "sameIn_GUI_a.rxx": true
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+# Rebuildable or third-party: font downloads, Python venv, 1.5x/2x fonts (tools/gen_fonts.py --scale)
+tools/downloads/
+tools/.venv/
+__pycache__/
+data/gfx/fonts@1.5x/
+data/gfx/fonts@2x/
+# Sprites exported from the original game data are not ours to publish; the manifest is metadata only
+_originals/*
+!_originals/manifest.json
