@@ -409,7 +409,7 @@ uses
   KM_HandsCollection, KM_Hand,
   KM_RenderPool, KM_ResTexts, KM_Game, KM_GameApp, KM_HouseBarracks, KM_HouseTownHall,
   KM_ScriptingEvents, KM_AIFields, KM_GameAppSettings, KM_GameSettings,
-  KM_ControlsDragger,
+  KM_ControlsDragger, KM_ResTheme,
   KM_CommonUtils, KM_ResLocales, KM_ResSound, KM_Resource, KM_Log, KM_ResKeys,
   KM_NetRoom, KM_MessageLog, KM_NetTypes,
   KM_InterfaceMapEditor, KM_HouseWoodcutters, KM_MapTypes,
@@ -1030,8 +1030,9 @@ begin
   showSwords := (Panel_Main.Height >= PANEL_MIN_HEIGHT);
   Sidebar_Middle.Visible := showSwords;
 
-  Panel_Stats.Top := (Panel_Main.Height - Panel_Stats.Height) div 2;
+  // Height first: centring on the old height leaves the page low when the UI grows (touch hosts: game -> results)
   Panel_Stats.Height := Min(Panel_Main.Height, MENU_DESIGN_Y);
+  Panel_Stats.Top := (Panel_Main.Height - Panel_Stats.Height) div 2;
 
   Panel_Stats_Background.Left := -Panel_Stats.Left;
   Panel_Stats_Background.Top := -Panel_Stats.Top;
@@ -2744,13 +2745,16 @@ procedure TKMGamePlayInterface.ShowPlayMore(aDoShow: Boolean; aMsg: TKMGameResul
 begin
   ReleaseDirectionSelector;
   fPlayMoreMsg := aMsg;
+  Image_PlayMore.TexID := 556; // The clock, unless the theme has art for a win or a defeat
   case aMsg of
     grWin:       begin
+                    Image_PlayMore.TexID := ThemeOr(gUITheme.PlayMoreWin, 556);
                     Label_PlayMore.Caption := gResTexts[TX_GAMEPLAY_WON];
                     Button_PlayMore.Caption := gResTexts[TX_GAMEPLAY_CONTINUE_PLAYING];
                     Button_PlayQuit.Caption := gResTexts[TX_GAMEPLAY_VICTORY];
                   end;
     grDefeat:    begin
+                    Image_PlayMore.TexID := ThemeOr(gUITheme.PlayMoreLose, 556);
                     Label_PlayMore.Caption := gResTexts[TX_GAMEPLAY_LOST];
                     Button_PlayMore.Caption := gResTexts[TX_GAMEPLAY_DEFEAT_CONTINUEWATCHING];
                     Button_PlayQuit.Caption := gResTexts[TX_GAMEPLAY_DEFEAT];

@@ -275,13 +275,14 @@ end;
 
 // The one place UI scale meets the engine: the GL buffer is the native size, the engine lays out and gets input in
 // UI units (buffer / s). s = UIScale setting * density, clamped so the UI never drops below the design minimum
-// (menus 1024x720, in game 830x400). In game s also shrinks a little (at most GAME_FIT_SHRINK) when that lets the
+// (menus 1024x768, the size the menu pages and the results page are laid out for; in game 830x400).
+// In game s also shrinks a little (at most GAME_FIT_SHRINK) when that lets the
 // whole sidebar fit (GAME_FIT_H, the desktop game's 1024x576 minimum): every sidebar page is then on screen without
 // scrolling (tablets, Mac windows) and text stays above the old stretched 960x720 size (s > aBufH / 720). Phones,
 // where fitting would cost much more, keep the larger UI and scroll the sidebar. Returns True when s changed
 function ApplyUIScale(aBufW, aBufH: Integer): Boolean;
 const
-  MENU_MIN_W = 1024; MENU_MIN_H = 720;
+  MENU_MIN_W = 1024; MENU_MIN_H = 768;
   GAME_MIN_W = 830; GAME_MIN_H = 400;
   GAME_FIT_H = 576; GAME_FIT_SHRINK = 0.8;
 var
@@ -1130,7 +1131,7 @@ begin
 end;
 
 
-// 1 when a game (map with the gameplay sidebar) is shown, 0 in menus. Menus need the full 1024x720 design size
+// 1 when a game (map with the gameplay sidebar) is shown, 0 in menus. Menus need the full 1024x768 design size
 function kam_in_game: Integer; cdecl;
 begin
   Result := 0;

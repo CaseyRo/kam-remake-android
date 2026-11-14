@@ -371,7 +371,7 @@ uses
   {$IFDEF Unix} LCLIntf, LCLType, {$ENDIF}
   SysUtils, StrUtils, Math,
   KM_ControlsTypes, KM_ControlsUtils,
-  KM_Resource, KM_ResTypes,
+  KM_Resource, KM_ResTypes, KM_ResTheme,
   KM_CommonUtils;
 
 
@@ -2067,7 +2067,7 @@ begin
   //Grid lines should be below selection focus
   if fShowLines then
     for I := 0 to Math.Min(fRowCount, maxItem) do
-      TKMRenderUI.WriteShape(AbsLeft+1, Y + I * fItemHeight - 1, paintWidth - 2, 1, $FFBBBBBB);
+      TKMRenderUI.WriteShape(AbsLeft+1, Y + I * fItemHeight - 1, paintWidth - 2, 1, ThemeOr(gUITheme.ListLine, $FFBBBBBB));
 
   TKMRenderUI.SetupClipY(AbsTop, AbsTop + Height - 1);
 

@@ -18,6 +18,18 @@ type
     TickMark: Boolean;        // Checkbox tick and radio dot drawn by code instead of the font's 'x'
     TickColor: Cardinal;      // Colour of that tick / dot when enabled
     OptionsBanner: Boolean;   // Main-menu Options page draws the GUIMain 6 banner behind the language list
+    LockedHouse: Cardinal;    // Tint for a house not yet available, drawn as its own icon plus a small GUI 41; 0 = GUI 41 alone
+    ButtonRadius: Byte;       // 3D (menu and game) buttons: corner radius; 0 = the engine's square chamfered button
+    ButtonLip: Byte;          // Rounded buttons: height of the darker lip under the face, the travel when pressed
+    ButtonRing: Cardinal;     // Rounded buttons: ring on hover
+    ButtonDisabledAlpha: Single; // Rounded buttons: opacity of a disabled face (no lip)
+    ListLine: Cardinal;       // Light edge of the black panels, list grid lines, chart frame; 0 = the engine's own
+    BarFill: Cardinal;        // Percent bars drawn in the engine's default green (house health); 0 = that green
+    StatText: Cardinal;       // Single-player results: <> 0 = stat labels and values in the plain ink font (antiqua)
+    LoadingText: Cardinal;    // Loading page: title tinted this colour, steps in the plain ink font; 0 = as today
+    PlayMoreWin: Word;        // GUI sprite on the 'You won' / 'You lost' prompt; 0 = the clock (556)
+    PlayMoreLose: Word;
+    RemakeLabel: Boolean;     // Main and single-player menus show the 'Remake' caption under the logo
   end;
 
 const
@@ -31,7 +43,19 @@ const
     DownOutlineWidth: 1;
     TickMark: False;
     TickColor: $FFFFFFFF;
-    OptionsBanner: True
+    OptionsBanner: True;
+    LockedHouse: 0;
+    ButtonRadius: 0;
+    ButtonLip: 3;
+    ButtonRing: $80FFFFFF;
+    ButtonDisabledAlpha: 0.5;
+    ListLine: 0;
+    BarFill: 0;
+    StatText: 0;
+    LoadingText: 0;
+    PlayMoreWin: 0;
+    PlayMoreLose: 0;
+    RemakeLabel: True
   );
 
 var
@@ -40,6 +64,7 @@ var
   procedure LoadUITheme(const aFileName: string);
   function ThemedBevelAlpha(aAlpha: Single): Single;
   function ThemedDisabledText(aDefault: Cardinal): Cardinal;
+  function ThemeOr(aThemed, aDefault: Cardinal): Cardinal;
   function ParseThemeColor(const aText: string; out aColor: Cardinal): Boolean;
 
 
@@ -62,6 +87,16 @@ function ThemedDisabledText(aDefault: Cardinal): Cardinal;
 begin
   if gUITheme.TextDisabled <> 0 then
     Result := gUITheme.TextDisabled
+  else
+    Result := aDefault;
+end;
+
+
+// A theme colour or sprite id when the theme sets one (0 = not set), else the engine's own
+function ThemeOr(aThemed, aDefault: Cardinal): Cardinal;
+begin
+  if aThemed <> 0 then
+    Result := aThemed
   else
     Result := aDefault;
 end;
@@ -138,6 +173,31 @@ begin
         ok := (value = '0') or (value = '1');
         if ok then gUITheme.OptionsBanner := value = '1';
       end else
+      if key = 'remakelabel' then
+      begin
+        ok := (value = '0') or (value = '1');
+        if ok then gUITheme.RemakeLabel := value = '1';
+      end else
+      if (key = 'buttonradius') or (key = 'buttonlip') then
+      begin
+        Val(value, p, code);
+        ok := (code = 0) and InRange(p, 0, 16);
+        if ok then
+          if key = 'buttonradius' then gUITheme.ButtonRadius := p else gUITheme.ButtonLip := p;
+      end else
+      if (key = 'playmorewin') or (key = 'playmorelose') then
+      begin
+        Val(value, p, code);
+        ok := (code = 0) and InRange(p, 1, High(Word));
+        if ok then
+          if key = 'playmorewin' then gUITheme.PlayMoreWin := p else gUITheme.PlayMoreLose := p;
+      end else
+      if key = 'buttondisabledalpha' then
+      begin
+        Val(value, f, code);
+        ok := (code = 0) and (f > 0) and (f <= 1);
+        if ok then gUITheme.ButtonDisabledAlpha := f;
+      end else
       begin
         ok := ParseThemeColor(value, col);
         if ok then
@@ -147,6 +207,12 @@ begin
           if key = 'hover'                          then gUITheme.Hover := col else
           if key = 'selectoutline'                  then gUITheme.DownOutline := col else
           if key = 'checkcolor'                     then gUITheme.TickColor := col else
+          if key = 'lockedhouse'                    then gUITheme.LockedHouse := col else
+          if key = 'buttonring'                     then gUITheme.ButtonRing := col else
+          if key = 'listline'                       then gUITheme.ListLine := col else
+          if key = 'barfill'                        then gUITheme.BarFill := col else
+          if key = 'stattext'                       then gUITheme.StatText := col else
+          if key = 'loadingtext'                    then gUITheme.LoadingText := col else
           if key = 'checkboxoutline'                then clChkboxOutline := col else
           if key = 'textselection'                  then clTextSelection := col else
           if key = 'listselection'                  then clListSelShape := col else
