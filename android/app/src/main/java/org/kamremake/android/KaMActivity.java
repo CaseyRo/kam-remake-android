@@ -59,9 +59,12 @@ public class KaMActivity extends Activity {
         }
 
         view = new KaMView(this, dataDir);
-        // Track the soft keyboard height to keep text fields visible above it
+        // Track the soft keyboard height to keep text fields visible above it. The game stays clear of a camera
+        // cutout: the root is padded by it, so the cutout side gets a black bar instead of covering the sidebar
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             view.setImeHeight(insets.getInsets(WindowInsets.Type.ime()).bottom);
+            android.graphics.Insets cut = insets.getInsets(WindowInsets.Type.displayCutout());
+            v.setPadding(cut.left, cut.top, cut.right, cut.bottom);
             return insets;
         });
         root.addView(view, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));

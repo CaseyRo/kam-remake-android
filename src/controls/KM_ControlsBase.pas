@@ -238,7 +238,7 @@ uses
   KM_Sound,
   KM_Resource, KM_ResSound, KM_ResSprites,
   KM_Defaults, KM_CommonUtils,
-  KM_RenderTypes;
+  KM_RenderTypes, KM_ResTheme;
 
 
 { TKMBevel }
@@ -421,7 +421,7 @@ begin
   if Enabled then
     col := FontColor
   else
-    col := $FF888888;
+    col := ThemedDisabledText($FF888888);
 
   t := 0;
   if Height > 0 then
@@ -460,7 +460,7 @@ begin
   if Enabled then
     col := FontColor
   else
-    col := $FF888888;
+    col := ThemedDisabledText($FF888888);
 
   TKMRenderUI.WriteText(AbsLeft, newTop, Width, fCaption, fFont, fTextAlign, col);
   TKMRenderUI.ReleaseClipY;
@@ -737,7 +737,7 @@ begin
   if TexID <> 0 then Exit;
 
   //If disabled then text should be faded
-  col := IfThen(Enabled, CapColor, icGray);
+  col := IfThen(Enabled, CapColor, ThemedDisabledText(icGray));
 
   top := AbsTop + Byte(bsDown in stateSet) + CapOffsetY;
 
@@ -785,7 +785,7 @@ begin
   TKMRenderUI.WriteBevel(AbsLeft, AbsTop, Width, Height, EdgeAlpha, BackAlpha);
 
   if (csOver in State) and Enabled and not HideHighlight then
-    TKMRenderUI.WriteShape(AbsLeft+1, AbsTop+1, Width-2, Height-2, $40FFFFFF);
+    TKMRenderUI.WriteShape(AbsLeft+1, AbsTop+1, Width-2, Height-2, gUITheme.Hover);
 end;
 
 
@@ -802,11 +802,11 @@ begin
                              AbsTop + TexOffsetY - 6 * Byte(Caption <> ''),
                              Width, Height, [], RX, TexID, Enabled or fEnabledVisually, FlagColor);
 
-  textCol := IfThen(Enabled or fEnabledVisually, CapColor, icGray);
+  textCol := IfThen(Enabled or fEnabledVisually, CapColor, ThemedDisabledText(icGray));
   TKMRenderUI.WriteText(AbsLeft + CapOffsetX, AbsTop + (Height div 2) + 4 + CapOffsetY, Width, Caption, Font, taCenter, textCol);
 
   if Down then
-    TKMRenderUI.WriteOutline(AbsLeft, AbsTop, Width, Height, 1, $FFFFFFFF);
+    TKMRenderUI.WriteOutline(AbsLeft, AbsTop, Width, Height, gUITheme.DownOutlineWidth, gUITheme.DownOutline);
   {if not fEnabled then
     TKMRenderUI.WriteShape(Left, Top, Width, Height, $80000000);}
 end;
@@ -837,10 +837,10 @@ begin
                       Width, fCaption, fFont, taCenter, FontColor);
 
   if (csOver in State) and Enabled then
-    TKMRenderUI.WriteShape(AbsLeft + 1, AbsTop + 1, Width - 2, Height - 2, $40FFFFFF);
+    TKMRenderUI.WriteShape(AbsLeft + 1, AbsTop + 1, Width - 2, Height - 2, gUITheme.Hover);
 
   if (csDown in State) or Down then
-    TKMRenderUI.WriteOutline(AbsLeft, AbsTop, Width, Height, 1, icWhite);
+    TKMRenderUI.WriteOutline(AbsLeft, AbsTop, Width, Height, gUITheme.DownOutlineWidth, gUITheme.DownOutline);
 end;
 
 

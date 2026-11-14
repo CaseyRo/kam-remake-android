@@ -1042,8 +1042,6 @@ const
   clFpsNormal = icYellow;
   clFpsHigh = icGreen;
 
-  clTextSelection = icSteelBlue;
-
   clMPSrvDetailsGameInfoFont = icLightGray;
   clStatsUnitDefault = icWhite;
   clStatsUnitMissingHL = $FF0080FF;
@@ -1056,10 +1054,6 @@ const
   clLobbyOpponentAll = icRoyalYellow;
   clLobbyOpponentAllHL = icAmberBrown;
 
-  clListSelShape = $88888888;
-  clListSelOutline = icWhite;
-  clListSelShapeUnfocused = $66666666;
-  clListSelOutlineUnfocused = icLightGray;
   clListSeparatorShape = icDarkGray;
 
   clMapEdBtnField = icYellow;
@@ -1072,8 +1066,6 @@ const
   clChartPeacetimeLn = icDarkGoldenRod;
   clChartPeacetimeLbl = icGoldenYellow;
   clChartSeparator = icTransparent;
-
-  clChkboxOutline = icLightGrayTrans;
 
   clPlayerSelf = icRed;
   clPlayerAlly = icYellow;
@@ -1102,6 +1094,14 @@ const
 
 var
   ExeDir: UnicodeString;
+
+  // UI colours a mod can override from 'Modding graphics/theme.ini' (KM_ResTheme)
+  clTextSelection: Cardinal = icSteelBlue;
+  clListSelShape: Cardinal = $88888888;
+  clListSelOutline: Cardinal = icWhite;
+  clListSelShapeUnfocused: Cardinal = $66666666;
+  clListSelOutlineUnfocused: Cardinal = icLightGray;
+  clChkboxOutline: Cardinal = icLightGrayTrans;
 
 {$IF DEFINED(FPC) AND NOT (DEFINED(CPUI386) OR DEFINED(CPUX86_64))}
   // x87 control word does not exist on this CPU (e.g. aarch64).

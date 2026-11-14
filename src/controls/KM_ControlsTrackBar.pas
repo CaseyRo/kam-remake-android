@@ -63,7 +63,7 @@ uses
   SysUtils, Math,
   KromUtils, KromOGLUtils,
   KM_RenderUI,
-  KM_Resource, KM_ResTypes;
+  KM_Resource, KM_ResTypes, KM_ResTheme;
 
 
 { TKMTrackBar }
@@ -229,13 +229,17 @@ end;
 
 
 procedure TKMTrackBar.Paint;
-const
-  TEXT_COLOR: array [Boolean] of TColor4 = ($FF888888, $FFFFFFFF);
 var
   thumbPos, thumbHeight, rangeMinPos, rangeMaxPos: Word;
   capWidth: Integer;
+  textColor: TColor4;
 begin
   inherited;
+
+  if Enabled then
+    textColor := $FFFFFFFF
+  else
+    textColor := ThemedDisabledText($FF888888);
 
   if fCaption <> '' then
   begin
@@ -244,7 +248,7 @@ begin
     else
       capWidth := CaptionWidth;
 
-    TKMRenderUI.WriteText(AbsLeft, AbsTop, capWidth, fCaption, fFont, taLeft, TEXT_COLOR[Enabled]);
+    TKMRenderUI.WriteText(AbsLeft, AbsTop, capWidth, fCaption, fFont, taLeft, textColor);
   end;
 
   rangeMinPos := Round(Width*(fRange.Min-fMinValue) / (fMaxValue - fMinValue));
@@ -258,7 +262,7 @@ begin
   thumbHeight := gRes.Sprites[rxGui].RXData.Size[132].Y;
 
   TKMRenderUI.WritePicture(AbsLeft + thumbPos, AbsTop+fTrackTop, ThumbWidth, thumbHeight, [anLeft,anRight], rxGui, 132);
-  TKMRenderUI.WriteText(AbsLeft + thumbPos + ThumbWidth div 2, AbsTop+fTrackTop+3, 0, ThumbText, SliderFont, taCenter, TEXT_COLOR[Enabled]);
+  TKMRenderUI.WriteText(AbsLeft + thumbPos + ThumbWidth div 2, AbsTop+fTrackTop+3, 0, ThumbText, SliderFont, taCenter, textColor);
 end;
 
 

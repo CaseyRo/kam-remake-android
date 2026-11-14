@@ -76,7 +76,7 @@ implementation
 uses
   Math, StrUtils, SysUtils,
   dglOpenGL,
-  KM_Render, KM_Resource, KM_ResSprites;
+  KM_Render, KM_Resource, KM_ResSprites, KM_ResTheme;
 
 
 { TKMRenderUI }
@@ -320,8 +320,20 @@ end;
 
 class procedure TKMRenderUI.WriteBevel(aLeft, aTop, aWidth, aHeight: SmallInt; const aColor: TKMColor3f;
                                        aEdgeAlpha: Single = BEVEL_EDGE_ALPHA_DEF; aBackAlpha: Single = BEVEL_BACK_ALPHA_DEF);
+var
+  back, edge: TKMColor3f;
 begin
   if (aWidth < 0) or (aHeight < 0) then Exit;
+
+  // The engine's black panels take the mod theme's colour and density (no theme = black, alphas as given)
+  back := aColor;
+  edge := COLOR3F_BLACK;
+  if (aColor.R = 0) and (aColor.G = 0) and (aColor.B = 0) then
+  begin
+    back := gUITheme.BevelColor;
+    edge := gUITheme.BevelEdge;
+    aBackAlpha := ThemedBevelAlpha(aBackAlpha);
+  end;
 
   // Reset texture to default (0), because it could be bind to any other texture (atlas)
   TKMRender.BindTexture(0);
@@ -331,7 +343,7 @@ begin
     glTranslatef(aLeft, aTop, 0);
 
     //Background
-    glColor4f(aColor.R, aColor.G, aColor.B, aBackAlpha);
+    glColor4f(back.R, back.G, back.B, aBackAlpha);
     glBegin(GL_QUADS);
       glkRect(1, 1, aWidth-1, aHeight-1);
     glEnd;
@@ -350,7 +362,7 @@ begin
 
       //Dark edge
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-      glColor4f(0, 0, 0, aEdgeAlpha);
+      glColor4f(edge.R, edge.G, edge.B, aEdgeAlpha);
       glBegin(GL_LINE_STRIP);
         glVertex2f(0.5, aHeight-0.5);
         glVertex2f(0.5, 0.5);

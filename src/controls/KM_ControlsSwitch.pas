@@ -96,8 +96,42 @@ implementation
 uses
   SysUtils, Math,
   KM_RenderUI,
-  KM_Resource,
-  KM_Defaults;
+  KM_Resource, KM_ResTheme,
+  KM_Defaults, KM_Points;
+
+
+// Check mark drawn by code (mod theme 'CheckMark=tick'): two strokes inside the aSize box
+procedure DrawTick(aLeft, aTop, aSize: Integer; aCol: TColor4);
+var
+  w: Single;
+
+  procedure Stroke(x1, y1, x2, y2: Single);
+  var
+    dx, dy, len, nx, ny: Single;
+    pts: TKMPointFArray;
+  begin
+    x1 := aLeft + x1 * aSize; y1 := aTop + y1 * aSize;
+    x2 := aLeft + x2 * aSize; y2 := aTop + y2 * aSize;
+    dx := x2 - x1; dy := y2 - y1;
+    len := Sqrt(dx * dx + dy * dy);
+    if len = 0 then Exit;
+    // Run on by half a stroke at both ends so the strokes meet without a notch at the elbow
+    x2 := x2 + dx / len * w; y2 := y2 + dy / len * w;
+    x1 := x1 - dx / len * w; y1 := y1 - dy / len * w;
+    nx := -dy / len * w; ny := dx / len * w;
+    SetLength(pts, 4);
+    pts[0] := KMPointF(x1 + nx, y1 + ny);
+    pts[1] := KMPointF(x2 + nx, y2 + ny);
+    pts[2] := KMPointF(x2 - nx, y2 - ny);
+    pts[3] := KMPointF(x1 - nx, y1 - ny);
+    TKMRenderUI.WritePolyShape(pts, aCol);
+  end;
+
+begin
+  w := Max(1, aSize * 0.09);
+  Stroke(0.22, 0.52, 0.42, 0.72);
+  Stroke(0.42, 0.72, 0.80, 0.26);
+end;
 
 
 { TKMCheckBox }
@@ -195,8 +229,8 @@ begin
   end
   else
   begin
-    col := icGray2;
-    semiCol := $FF888888;
+    col := ThemedDisabledText(icGray2);
+    semiCol := ThemedDisabledText($FF888888);
   end;
 
   checkSize := gRes.Fonts[fFont].GetTextSize('x').Y + 1;
@@ -208,11 +242,23 @@ begin
   if DrawOutline then
     TKMRenderUI.WriteOutline(AbsLeft, AbsTop, checkSize - 4, checkSize - 4, LineWidth, LineColor);
 
-  case fState of
-    cbsChecked:     TKMRenderUI.WriteText(AbsLeft + (checkSize-4) div 2, AbsTop - 1, 0, 'x', fFont, taCenter, col);
-    cbsSemiChecked: TKMRenderUI.WriteText(AbsLeft + (checkSize-4) div 2, AbsTop - 1, 0, 'x', fFont, taCenter, semiCol);
-    cbsUnchecked:   ; //Do not draw anything
-  end;
+  if gUITheme.TickMark then
+    case fState of
+      cbsChecked:     if Enabled then
+                        DrawTick(AbsLeft, AbsTop, checkSize - 4, gUITheme.TickColor)
+                      else
+                        DrawTick(AbsLeft, AbsTop, checkSize - 4, col);
+      // Mixed state: a dash
+      cbsSemiChecked: TKMRenderUI.WriteShape(AbsLeft + (checkSize-4) div 4, AbsTop + (checkSize-4) div 2 - 1,
+                                             (checkSize-4) div 2, 2, semiCol);
+      cbsUnchecked:   ;
+    end
+  else
+    case fState of
+      cbsChecked:     TKMRenderUI.WriteText(AbsLeft + (checkSize-4) div 2, AbsTop - 1, 0, 'x', fFont, taCenter, col);
+      cbsSemiChecked: TKMRenderUI.WriteText(AbsLeft + (checkSize-4) div 2, AbsTop - 1, 0, 'x', fFont, taCenter, semiCol);
+      cbsUnchecked:   ; //Do not draw anything
+    end;
 
 
   TKMRenderUI.WriteText(AbsLeft + checkSize, AbsTop, Width - checkSize, fCaption, fFont, taLeft, col);
@@ -418,14 +464,17 @@ end;
 //Might need additional graphics to be added to gui.rx
 //Some kind of box with an outline, darkened background and shadow maybe, similar to other controls.
 procedure TKMRadioGroup.Paint;
-const
-  FONT_COL: array [Boolean] of TColor4 = ($FF888888, $FFFFFFFF);
 var
-  CheckSize: Integer;
+  fontCol: array [Boolean] of TColor4;
+  dotCol: TColor4;
+  CheckSize, rowTop: Integer;
   I, VisibleI: Integer;
 begin
   inherited;
   if (Count = 0) or (VisibleCount = 0) then Exit; //Avoid dividing by zero
+
+  fontCol[False] := ThemedDisabledText($FF888888);
+  fontCol[True] := $FFFFFFFF;
 
   CheckSize := gRes.Fonts[fFont].GetTextSize('x').Y + 1;
 
@@ -440,12 +489,21 @@ begin
       TKMRenderUI.WriteOutline(AbsLeft, AbsTop + Round(VisibleI * LineHeight), CheckSize-4, CheckSize-4, LineWidth, LineColor);
 
     if fItemIndex = I then
-      TKMRenderUI.WriteText(AbsLeft + (CheckSize - 4) div 2, AbsTop + Round(VisibleI * LineHeight) - 1, 0,
-                            'x', fFont, taCenter, FONT_COL[Enabled and fItems[I].Enabled]);
+      if gUITheme.TickMark then
+      begin
+        // Radio choice: a dot, not a tick
+        rowTop := AbsTop + Round(VisibleI * LineHeight);
+        dotCol := fontCol[False];
+        if Enabled and fItems[I].Enabled then
+          dotCol := gUITheme.TickColor;
+        TKMRenderUI.WriteCircle(AbsLeft + (CheckSize - 4) div 2, rowTop + (CheckSize - 4) div 2, Max(2, (CheckSize - 4) div 4), dotCol);
+      end else
+        TKMRenderUI.WriteText(AbsLeft + (CheckSize - 4) div 2, AbsTop + Round(VisibleI * LineHeight) - 1, 0,
+                              'x', fFont, taCenter, fontCol[Enabled and fItems[I].Enabled]);
 
     // Caption
     TKMRenderUI.WriteText(AbsLeft + CheckSize, AbsTop + Round(VisibleI * LineHeight), Width - Round(LineHeight),
-                          fItems[I].Text, fFont, taLeft, FONT_COL[Enabled and fItems[I].Enabled]);
+                          fItems[I].Text, fFont, taLeft, fontCol[Enabled and fItems[I].Enabled]);
     Inc(VisibleI);
   end;
 end;

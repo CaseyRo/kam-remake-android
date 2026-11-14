@@ -4,7 +4,8 @@ unit KM_AndroidExports;
 // All calls must come from the GL thread, except the KMAndroidHost state setters.
 // Touch input is translated here into the mouse events the original game UI expects:
 //  - tap on UI or map = left click
-//  - one finger drag on UI = left button drag (sliders, scrollbars, minimap)
+//  - one finger drag on UI = left button drag (sliders, scrollbars, minimap); a vertical drag on a scrolling sidebar
+//    or scroll panel (Options page) scrolls it
 //  - one finger drag on map = scroll the map (or left button drag while a build/editor tool is active)
 //  - long press on map = right button press; keep holding and move to pick troop direction, release to finish
 //  - two finger tap = right click
@@ -68,8 +69,8 @@ uses
   Classes, SysUtils, Math, Types, Controls, LCLType, BaseUnix,
   KM_Main, KM_GameApp, KM_Defaults, KM_Points, KM_Cursor,
   KM_InterfaceDefaults, KM_InterfaceGame, KM_InterfaceGamePlay, KM_InterfaceMapEditor, KM_Game, KM_Viewport,
-  KM_Controls, KM_ControlsEdit,
-  KM_Log, dglOpenGL, KM_ResSprites, KM_ResTypes, KM_Video, KM_Render, KM_MainSettings,
+  KM_Controls, KM_ControlsBase, KM_ControlsEdit, KM_ControlsScroll, KM_ControlsSwitch,
+  KM_Log, dglOpenGL, KM_Resource, KM_ResSprites, KM_ResTypes, KM_Video, KM_Render, KM_MainSettings,
   KM_AndroidSelfTest,
   KMAndroidHost, KMAndroidLog;
 
@@ -77,6 +78,8 @@ const
   TAP_SLOP = 14;          // UI units finger can move and still be a tap
   LONG_PRESS_MS = 450;    // hold time to become a right button press
   TWO_FINGER_TAP_MS = 300;
+  // Minimum touch target edge in OS points: Apple HIG 44 pt, Material 48 dp
+  TOUCH_TARGET_PT = {$IFDEF DARWIN}44{$ELSE}48{$ENDIF};
 
 type
   TKMTouchState = (tsIdle, tsUIDrag, tsMapPending, tsMapPan, tsMapDragLeft, tsRightHold, tsPinch, tsConsumed,
@@ -95,6 +98,8 @@ var
   fPinchMoved: Boolean;
   fClipboardText: UnicodeString;
   fTextFieldTapped: Boolean;
+  // UI units a touch was moved onto a nearby control (TouchTarget). Applied to the whole gesture
+  fTouchOffset: TPointF;
 
 
 function MakePointF(aX, aY: Single): TPointF;
@@ -270,11 +275,15 @@ end;
 
 // The one place UI scale meets the engine: the GL buffer is the native size, the engine lays out and gets input in
 // UI units (buffer / s). s = UIScale setting * density, clamped so the UI never drops below the design minimum
-// (menus 1024x720, in game 830x400). Returns True when s changed
+// (menus 1024x720, in game 830x400). In game s also shrinks a little (at most GAME_FIT_SHRINK) when that lets the
+// whole sidebar fit (GAME_FIT_H, the desktop game's 1024x576 minimum): every sidebar page is then on screen without
+// scrolling (tablets, Mac windows) and text stays above the old stretched 960x720 size (s > aBufH / 720). Phones,
+// where fitting would cost much more, keep the larger UI and scroll the sidebar. Returns True when s changed
 function ApplyUIScale(aBufW, aBufH: Integer): Boolean;
 const
   MENU_MIN_W = 1024; MENU_MIN_H = 720;
   GAME_MIN_W = 830; GAME_MIN_H = 400;
+  GAME_FIT_H = 576; GAME_FIT_SHRINK = 0.8;
 var
   u, s: Single;
   minW, minH: Integer;
@@ -291,7 +300,10 @@ begin
     minW := MENU_MIN_W;
     minH := MENU_MIN_H;
   end;
-  s := Max(Min(u * gHostDensity, Min(aBufW / minW, aBufH / minH)), 0.1);
+  s := Min(u * gHostDensity, Min(aBufW / minW, aBufH / minH));
+  if (kam_in_game = 1) and (s > 0) and (aBufH / s < GAME_FIT_H) and (aBufH / GAME_FIT_H >= s * GAME_FIT_SHRINK) then
+    s := aBufH / GAME_FIT_H;
+  s := Max(s, 0.1);
 
   Result := Abs(s - gHostUIScale) > 0.001;
   gHostBufferWidth := aBufW;
@@ -472,6 +484,10 @@ begin
     // Picks up a changed setting, menu <-> game and the results page (each has its own minimum UI size)
     if ApplyUIScale(gHostBufferWidth, gHostBufferHeight) then
       gMain.SurfaceResized(gHostScreenWidth, gHostScreenHeight);
+    // A UI scale across 1.4 or 3.5 wants another font set (KM_ResFonts.WantedScaleSet); cheap when it does not.
+    // Every frame, since kam_resize also changes gHostUIScale
+    if (gRes <> nil) and (gRes.Fonts <> nil) then
+      gRes.Fonts.ReloadForUIScale;
     CheckSynchronize;
     CheckLongPress;
     if SelfTestActive then
@@ -591,10 +607,29 @@ begin
 end;
 
 
-// Interface (gameplay or map editor) whose left toolbar can be scrolled under the point
-function ScrollableSidebarAt(const P: TPointF): TObject;
+// Scroll panel (Options page, map editor palettes) under the point whose content is taller than it
+function ScrollPanelAt(const P: TPointF): TKMScrollPanel;
+var
+  C: TKMControl;
 begin
   Result := nil;
+  if ActiveControls = nil then Exit;
+  C := ActiveControls.HitControl(Round(P.X), Round(P.Y), True);
+  while C <> nil do
+  begin
+    if (C is TKMScrollPanel) and TKMScrollPanel(C).ScrollV.Visible then
+      Exit(TKMScrollPanel(C));
+    C := C.Parent;
+  end;
+end;
+
+
+// What a vertical drag under the point scrolls: a scroll panel (topmost, it can lie over the sidebar),
+// or the interface (gameplay or map editor) whose left toolbar can be scrolled
+function ScrollableSidebarAt(const P: TPointF): TObject;
+begin
+  Result := ScrollPanelAt(P);
+  if Result <> nil then Exit;
   if (gGame = nil) or (gGameApp = nil) then Exit;
   if (gGame.GamePlayInterface <> nil) and (gGameApp.ActiveInterface = gGame.GamePlayInterface)
   and gGame.GamePlayInterface.IsOverScrollableSidebar(Round(P.X), Round(P.Y)) then
@@ -607,7 +642,18 @@ end;
 
 
 procedure ScrollSidebarOf(aInterface: TObject; aDelta: Integer);
+var
+  bar: TKMScrollBar;
 begin
+  if aInterface is TKMScrollPanel then
+  begin
+    bar := TKMScrollPanel(aInterface).ScrollV;
+    bar.Position := bar.Position + aDelta;
+    // Setting Position does not move the content, OnChange does
+    if Assigned(bar.OnChange) then
+      bar.OnChange(bar);
+  end
+  else
   if aInterface is TKMGamePlayInterface then
     TKMGamePlayInterface(aInterface).ScrollSidebar(aDelta)
   else
@@ -640,6 +686,70 @@ begin
   if ctrls = nil then Exit(True);
   pt := MousePt(P);
   Result := ctrls.HitControl(pt.X, pt.Y) <> nil;
+end;
+
+
+// Backgrounds, frames and captions: a touch on them may mean the control next to them
+function IsDecoration(C: TKMControl): Boolean;
+begin
+  Result := ((C.ClassType = TKMPanel) or (C is TKMBevel) or (C is TKMShape) or (C is TKMLabel) or (C is TKMImage))
+            and not Assigned(C.OnClick);
+end;
+
+
+// The engine's controls are 20-33 UI units, often under 44 pt / 48 dp on screen. A touch that misses every control
+// (lands on a background, caption or the menu backdrop) goes to the nearest control within half the minimum
+// target size instead, so each control is reachable from a TOUCH_TARGET_PT area. Touches on a control and on the
+// game map are left alone. Disabled controls count as targets too, so a touch near one never reaches a neighbour
+function TouchTarget(const P: TPointF): TPointF;
+var
+  ctrls: TKMMasterControl;
+  C, bestC: TKMControl;
+  R, step, dX, dY: Integer;
+  d, best: Single;
+begin
+  Result := P;
+  ctrls := ActiveControls;
+  if ctrls = nil then Exit;
+  C := ctrls.HitControl(Round(P.X), Round(P.Y), True);
+  if C = nil then
+  begin
+    if GameViewport <> nil then Exit; // the map
+  end
+  else
+  if C is TKMRadioGroup then
+    // A radio row only takes clicks on its box and caption: the touch goes to the box, so the whole row counts
+    Exit(MakePointF(C.AbsLeft + 2, P.Y))
+  else
+  if not IsDecoration(C) then Exit;
+
+  R := Round(TOUCH_TARGET_PT / 2 * gHostDensity / gHostUIScale);
+  step := Max(2, R div 4);
+  best := R + 1;
+  bestC := nil;
+  dY := -R;
+  while dY <= R do
+  begin
+    dX := -R;
+    while dX <= R do
+    begin
+      d := Hypot(dX, dY);
+      if d < best then
+      begin
+        C := ctrls.HitControl(Round(P.X) + dX, Round(P.Y) + dY, True);
+        if (C <> nil) and not IsDecoration(C) then
+        begin
+          best := d;
+          bestC := C;
+          Result := MakePointF(Round(P.X) + dX, Round(P.Y) + dY);
+        end;
+      end;
+      Inc(dX, step);
+    end;
+    Inc(dY, step);
+  end;
+  if (bestC <> nil) and not bestC.Enabled then
+    Result := P;
 end;
 
 
@@ -738,6 +848,13 @@ begin
     // Host sends buffer px, the engine works in UI units
     P0 := MakePointF(X0 / gHostUIScale, Y0 / gHostUIScale);
     P1 := MakePointF(X1 / gHostUIScale, Y1 / gHostUIScale);
+    if aAction = TOUCH_DOWN then
+    begin
+      fTouchOffset := TouchTarget(P0);
+      fTouchOffset := MakePointF(fTouchOffset.X - P0.X, fTouchOffset.Y - P0.Y);
+    end;
+    // The whole gesture keeps the offset, so press and release land on the same control
+    P0 := MakePointF(P0.X + fTouchOffset.X, P0.Y + fTouchOffset.Y);
 
     case aAction of
       TOUCH_DOWN:
@@ -800,7 +917,7 @@ begin
             end;
           tsSidebarScroll:
             begin
-              if (gGame <> nil) and (gGameApp.ActiveInterface = fScrollTarget) then
+              if (fScrollTarget is TKMScrollPanel) or ((gGame <> nil) and (gGameApp.ActiveInterface = fScrollTarget)) then
                 ScrollSidebarOf(fScrollTarget, Round(fLastPos.Y - P0.Y));
               fLastPos := P0;
             end;
@@ -917,13 +1034,26 @@ end;
 
 
 procedure kam_wheel(aSteps, X, Y: Integer); cdecl;
+const
+  WHEEL_SIDEBAR_STEP = 30; // UI units per wheel step
 var
   handled: Boolean;
+  sidebar: TObject;
 begin
   if gGameApp = nil then Exit;
   handled := False;
   X := Round(X / gHostUIScale);
   Y := Round(Y / gHostUIScale);
+  // Over a sidebar taller than the screen the wheel scrolls it (unless a list under the pointer takes the wheel)
+  // instead of zooming the map
+  sidebar := ScrollableSidebarAt(MakePointF(X, Y));
+  if sidebar <> nil then
+  begin
+    ActiveControls.MouseWheel(X, Y, aSteps, handled);
+    if not handled then
+      ScrollSidebarOf(sidebar, -aSteps * WHEEL_SIDEBAR_STEP);
+    Exit;
+  end;
   gGameApp.MouseWheel(fButtons, aSteps, X, Y, handled);
 end;
 

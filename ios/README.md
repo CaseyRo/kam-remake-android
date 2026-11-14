@@ -40,3 +40,19 @@ App icon: put a 1024 x 1024 `icon-1024.png` into `ios/host/Assets.xcassets/AppIc
   The identifiers and icons are in `ios/gamecenter/`.
 - Hardware keyboard and mouse; hold Space and move the pointer to pan the map.
 - The view keeps a landscape shape of at most 4:3; windows too small to play in show a hint instead.
+  It stays inside the safe area on the left, top and right (Android: clear of a camera cutout).
+
+## Touch and interface size (both ports, `android/pascal/KM_AndroidExports.pas`)
+
+- In game the interface shrinks by up to 20% when that fits the whole sidebar (576 UI units, the desktop
+  1024x576 minimum) on screen; otherwise (phones) the sidebar scrolls by drag or wheel and shows a scroll
+  indicator on its right edge.
+- A touch that lands next to a control (on a background or caption) goes to the nearest control within
+  22 pt (iOS) / 24 dp (Android), so every control has a 44 pt / 48 dp touch area.
+- Stacked rows cannot borrow space from a neighbour, so they get taller: Options check boxes, radio rows and
+  the interface size list are 38 UI units apart (44 pt on an 11-inch iPad at 150%), in-game save/load list
+  rows 32. The Options sections then no longer fit one screen: they scroll (drag, wheel or scroll bar) above a
+  pinned Back button. Desktop builds keep 20.
+- To see the phone-shaped sidebar scroll on a Mac, run the iPad app (`ios/run_mac.sh`), set Options >
+  Interface size to 150% and drag the window wide and low, e.g. 1400x640 pt: the in-game UI is then 427 units
+  tall, too far below 576 to shrink, and the sidebar scrolls with its indicator.

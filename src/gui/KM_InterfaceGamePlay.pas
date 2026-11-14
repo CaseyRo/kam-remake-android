@@ -218,6 +218,7 @@ type
     fSidebarScrollMax: Integer;
     fControlsBaseTop: Integer;
     Button_Speed: TKMButton; // Game speed for touch devices, where F5..F8 are out of reach
+    Shape_SidebarTrack, Shape_SidebarThumb: TKMShape; // Scroll indicator, shown while the sidebar can scroll
   private
     procedure ApplySidebarScroll;
     procedure SpeedClick(Sender: TObject);
@@ -420,6 +421,11 @@ uses
 const
   PANEL_TRACK_TOP = 285;
   REPLAYBAR_DEFAULT_WIDTH = 400;
+  {$IFDEF ANDROID}
+  // Save/load list rows on touch hosts: in game an 11-inch iPad at the default 150% size has 2.88 buffer
+  // px per unit (1.44 pt per unit), so 32 units is 46 pt; 48 dp on a density 2 Android tablet
+  TOUCH_LIST_ROW = 32;
+  {$ENDIF}
 
   KEY_FUNCS_ALLOWED_ON_PAUSE: TKMKeyFunctionSet = [
     kfMusicPrevTrack, kfMusicNextTrack, kfMusicDisable, kfMusicShuffle, kfMusicVolumeUp, kfMusicVolumeDown,  kfMusicMute,
@@ -904,6 +910,18 @@ begin
 { I plan to store all possible layouts on different pages which gets displayed one at a time }
 { ========================================================================================== }
   Create_Controls; // Includes all the child pages
+  {$IFDEF ANDROID}
+  // Touch screens have no hover to reveal a scrollbar: a persistent indicator on the sidebar's right edge
+  // tells there is more below and how far it is scrolled
+  Shape_SidebarTrack := TKMShape.Create(Panel_Main, TOOLBAR_WIDTH - 8, 0, 5, 0);
+  Shape_SidebarTrack.FillColor := $50000000;
+  Shape_SidebarTrack.LineWidth := 0;
+  Shape_SidebarTrack.Hitable := False;
+  Shape_SidebarThumb := TKMShape.Create(Panel_Main, TOOLBAR_WIDTH - 8, 0, 5, 0);
+  Shape_SidebarThumb.FillColor := $E0C8E6F2;
+  Shape_SidebarThumb.LineWidth := 0;
+  Shape_SidebarThumb.Hitable := False;
+  {$ENDIF}
 
   Create_NetWait; // Overlay blocking everyhitng but sidestack and messages
   fGuiGameAllies := TKMGUIGameAllies.Create(Panel_Main); // MessagePage sibling
@@ -1058,6 +1076,14 @@ begin
   Panel_Controls.Top := fControlsBaseTop - fSidebarScroll;
   // Keep full sidebar height, the part below the screen is reached by scrolling
   Panel_Controls.Height := Max(Panel_Main.Height, SIDEBAR_REQUIRED_HEIGHT) - fControlsBaseTop;
+
+  if Shape_SidebarTrack = nil then Exit; // Resize during creation
+  // Thumb shows the visible part of the sidebar within its full height
+  Shape_SidebarTrack.Visible := fSidebarScrollMax > 0;
+  Shape_SidebarThumb.Visible := fSidebarScrollMax > 0;
+  Shape_SidebarTrack.Height := Panel_Main.Height;
+  Shape_SidebarThumb.Top := fSidebarScroll * Panel_Main.Height div SIDEBAR_REQUIRED_HEIGHT;
+  Shape_SidebarThumb.Height := Sqr(Panel_Main.Height) div SIDEBAR_REQUIRED_HEIGHT;
 end;
 
 
@@ -1555,6 +1581,9 @@ begin
     ListBox_Save.HintBackColor := TKMColor4f.New(87, 72, 37);
     ListBox_Save.SearchEnabled := True;
     ListBox_Save.OnChange := Menu_Save_ListChange;
+    {$IFDEF ANDROID}
+    ListBox_Save.ItemHeight := TOUCH_LIST_ROW;
+    {$ENDIF}
 
     Label_SaveExists := TKMLabel.Create(Panel_Save,0,260,TB_WIDTH,30,gResTexts[TX_GAMEPLAY_SAVE_EXISTS],fntOutline,taLeft);
     CheckBox_SaveExists := TKMCheckBox.Create(Panel_Save,0,280,TB_WIDTH,20,gResTexts[TX_GAMEPLAY_SAVE_OVERWRITE], fntMetal);
@@ -1577,6 +1606,9 @@ begin
     ListBox_Load.SearchEnabled := True;
     ListBox_Load.OnChange := Menu_Load_ListClick;
     ListBox_Load.OnDoubleClick := Menu_Load_Click;
+    {$IFDEF ANDROID}
+    ListBox_Load.ItemHeight := TOUCH_LIST_ROW;
+    {$ENDIF}
 
     Label_LoadDescription := TKMLabel.Create(Panel_Load,0,265,TB_WIDTH,0,'',fntGrey,taLeft);
     Label_LoadDescription.WordWrap := True;

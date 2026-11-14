@@ -587,13 +587,16 @@ static void update_pause(void) {
 }
 
 // The game always gets its designed shape: a landscape area no taller than 4:3, with black bars for the rest, so
-// the 1024 px wide UI is never cut off. Spaces too small to play in (iPhone Duo folded, a narrow window) show a
-// hint instead and pause the game
+// the 1024 px wide UI is never cut off. It stays inside the safe area on the left, top and right (iPhone sensor
+// housing; zero on iPad, whose rounded corners clip only the sidebar's frame art, not the minimap or a control);
+// the bottom inset is only the home indicator, which is auto-hidden. Spaces too small to play in (iPhone Duo
+// folded, a narrow window) show a hint instead and pause the game
 - (void)viewDidLayoutSubviews {
   [super viewDidLayoutSubviews];
-  CGSize s = self.view.bounds.size;
+  UIEdgeInsets safe = self.view.safeAreaInsets;
+  CGSize s = CGSizeMake(self.view.bounds.size.width - safe.left - safe.right, self.view.bounds.size.height - safe.top);
   CGFloat h = MIN(s.height, s.width * 3 / 4);
-  gView.frame = CGRectMake(0, (s.height - h) / 2, s.width, h);
+  gView.frame = CGRectMake(safe.left, safe.top + (s.height - h) / 2, s.width, h);
   _hint.frame = CGRectInset(self.view.bounds, 20, 20);
   gTooSmall = s.width < MIN_PLAY_WIDTH || h < MIN_PLAY_HEIGHT;
   _hint.hidden = !gTooSmall;
